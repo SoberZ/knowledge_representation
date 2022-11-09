@@ -101,9 +101,9 @@ def sudoku2DIMACS(sudokus, N, sudfile):
                 f.write(value+" 0\n")
 
 
-def DPLL(DIMACS_file):
+def DP(DIMACS_file):
     """
-    DPLL algorithm, keep track of result so we can go back etc.
+    DP algorithm, keep track of result so we can go back etc.
 
     DIMACS_file - Sudoku DIMACS file
     """
@@ -126,7 +126,7 @@ def DPLL(DIMACS_file):
 
 if __name__ == "__main__":
     strategy_map = {
-        "-S1": DPLL,
+        "-S1": DP,
     }
 
     # Parse the command line input
