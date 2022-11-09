@@ -50,6 +50,7 @@ def sudoku2DIMACS(sudokus, N, sudfile):
 
     sudokus - list of sudokus
     N - N x N dimension sudoku
+    sudfile - sudoku file that is used
     """
 
     # Rules mapping to find the rules corresponding to the N.
@@ -100,8 +101,28 @@ def sudoku2DIMACS(sudokus, N, sudfile):
                 f.write(value+" 0\n")
 
 
-def DPLL(sudfile):
-    pass
+def DPLL(DIMACS_file):
+    """
+    DPLL algorithm, keep track of result so we can go back etc.
+
+    DIMACS_file - Sudoku DIMACS file
+    """
+
+    # Convert the file data to a usable format.
+    data = []
+    with open(DIMACS_file, "r") as f:
+        data = f.readlines()
+
+    # First line contains N variables and N clauses
+    firstLine, clauses = data[0], data[1:]
+
+    # TODO: Convert the string data to usable numbers
+
+    # TODO: Insert new numbers
+
+    # TODO: Evaluate the expression
+
+
 
 if __name__ == "__main__":
     strategy_map = {
@@ -124,8 +145,12 @@ if __name__ == "__main__":
     sudoku2DIMACS(sudlist, N, sudfile)
 
     # Implement DP + two heuristics
-    # Strategy is chosen based on command line arguments
-    strategy_map[strategy](sudfile)
+    nth_sudoku = 0
+    parsedFile = sudfile.split("/")[-1].split(".")[0]
+    DIMACS_file = "./sudoku_DIMACS/"+parsedFile+"/"+parsedFile+"_"+str(nth_sudoku)+".cnf"
+
+
+    strategy_map[strategy](DIMACS_file) # Strategy based on command line arguments
 
     # Write output (=variable assignments) as DIMACS file
 
