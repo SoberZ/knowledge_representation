@@ -72,10 +72,10 @@ def sudoku2DIMACS(sudokus, N, sudfile):
         filetowrite = sudfile.split("/")[-1].split(".")[0]
         dimacDir = "./sudoku_DIMACS/" + filetowrite
 
-        if not os.path.exists("./sudoku_DIMACS/"+filetowrite):
-            os.makedirs("./sudoku_DIMACS/"+filetowrite)
+        if not os.path.exists(dimacDir):
+            os.makedirs(dimacDir)
 
-        newfile = "./sudoku_DIMACS/"+filetowrite+"/"+filetowrite+"_"+str(index)+".cnf"
+        newfile = dimacDir+"/"+filetowrite+"_"+str(index)+".cnf"
 
         # Copy the rules from one file to the new file.
         shutil.copyfile(N2rules[N], newfile)
