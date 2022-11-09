@@ -1,5 +1,6 @@
 import shutil
 import sys
+import os
 
 
 def read_sudoku(file, n_lines=-1):
@@ -69,7 +70,12 @@ def sudoku2DIMACS(sudokus, N, sudfile):
 
         # Create the new .cnf file for the sudoku.
         filetowrite = sudfile.split("/")[-1].split(".")[0]
-        newfile = filetowrite+"_"+str(index)+".cnf"
+        dimacDir = "./sudoku_DIMACS/" + filetowrite
+
+        if not os.path.exists("./sudoku_DIMACS/"+filetowrite):
+            os.makedirs("./sudoku_DIMACS/"+filetowrite)
+
+        newfile = "./sudoku_DIMACS/"+filetowrite+"/"+filetowrite+"_"+str(index)+".cnf"
 
         # Copy the rules from one file to the new file.
         shutil.copyfile(N2rules[N], newfile)
@@ -94,26 +100,30 @@ def sudoku2DIMACS(sudokus, N, sudfile):
                 f.write(value+" 0\n")
 
 
+def DPLL(sudfile):
+    pass
+
 if __name__ == "__main__":
-    # strategy_map = {
-    #     "S1": strategy1,
-    # }
+    strategy_map = {
+        "S1": DPLL,
+    }
 
     # Parse the command line input
-    # strategy, file = parse_commmand()
+    strategy, file = parse_commmand()
 
     sudfile = "./testsets/4x4.txt"
 
     # Read sudoku from file.
-    sudlist = read_sudoku(sudfile, 1)
+    sudlist = read_sudoku(sudfile, 5)
 
     # Find N x N dimension for sudoku.
     sudlen = len(sudlist[0])
     N = 16 if sudlen == 256 else 9 if sudlen == 81 else 4
 
     # Read the problem (=clauses) as DIMACS file
-    sud2dimacs = sudoku2DIMACS(sudlist, N, sudfile)
+    sudoku2DIMACS(sudlist, N, sudfile)
 
     # Implement DP + two heuristics
+    DPLL(sudfile)
 
     # Write output (=variable assignments) as DIMACS file
