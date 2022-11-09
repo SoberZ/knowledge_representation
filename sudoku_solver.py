@@ -105,7 +105,7 @@ def DPLL(sudfile):
 
 if __name__ == "__main__":
     strategy_map = {
-        "S1": DPLL,
+        "-S1": DPLL,
     }
 
     # Parse the command line input
@@ -124,6 +124,9 @@ if __name__ == "__main__":
     sudoku2DIMACS(sudlist, N, sudfile)
 
     # Implement DP + two heuristics
-    DPLL(sudfile)
+    # Strategy is chosen based on command line arguments
+    strategy_map[strategy](sudfile)
 
     # Write output (=variable assignments) as DIMACS file
+
+
