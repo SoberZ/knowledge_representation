@@ -28,7 +28,7 @@ def read_sudoku(file, n_lines=-1):
     return sudokus
 
 
-def parse_commmand():
+def parse_command():
     """
     Parse the input from the command line.
     Input format: python3 sudoku_solver.py -Sn file
@@ -39,14 +39,14 @@ def parse_commmand():
 
     if len(sys.argv) > 1:
         strategy = sys.argv[1]
-        file = sys.argv[2] if len(sys.argv > 2) else file
+        file = sys.argv[2] if len(sys.argv) > 2 else file
 
     return strategy, file
 
 
 def sudoku2DIMACS(sudokus, N, sudfile):
     """
-    Convert a sudou to DIMACS format. We use the given sudokus
+    Convert a sudoku to DIMACS format. We use the given sudokus
     and append the values in the sudoku to it to generate a newly
     created sudoku in DIMACS format.
 
@@ -101,6 +101,7 @@ def sudoku2DIMACS(sudokus, N, sudfile):
         with open(newfile, "a+") as f:
             for value in values:
                 f.write(value+" 0\n")
+
 
 def BCP(clauses):
     """
@@ -165,7 +166,7 @@ def get_variables(clauses):
     return sorted(allPositions)
 
 
-def DPLL(clauses, assignment):
+def DPLL(clauses, assignment, strategy):
     """
     DPLL algorithm, keep track of result so we can go back etc.
 
@@ -188,25 +189,27 @@ def DPLL(clauses, assignment):
         print("allpos: ", len(all_positions))
         print(sorted(all_positions))
         print("open: ", open_positions)
-        choice = random.choice(open_positions)
-
+        if strategy == '-S1':
+            choice = random.choice(open_positions)
+        if strategy == '-S2':
+            choice = jw_os(open_positions, clauses)
 
         # Return (DPLL with that variable True) || (DPLL with that variable False)
         solution = None
         if choice[0] == "-": # First positive choice
             new_clauses.append(set([choice[0:]]))
-            solution = DPLL(new_clauses, assignment + [choice[0:]])
+            solution = DPLL(new_clauses, assignment + [choice[0:]], strategy)
         else:
             new_clauses.append(set([choice]))
-            solution = DPLL(new_clauses, assignment + [choice])
+            solution = DPLL(new_clauses, assignment + [choice], strategy)
 
         if not solution: # Negative choice
             if choice[0] == "-": # Negative choice has been chosen
                 new_clauses.append(set([choice]))
-                solution = DPLL(new_clauses, assignment + [choice])
+                solution = DPLL(new_clauses, assignment + [choice], strategy)
             else: # Make choice negative
                 new_clauses.append(set(["-"+choice]))
-                solution = DPLL(new_clauses, assignment + ["-"+choice])
+                solution = DPLL(new_clauses, assignment + ["-"+choice], strategy)
 
     return solution
 
@@ -227,8 +230,30 @@ def DPLL_Strategy(DIMACS_file):
 
     # Perform Boolean Constraint Propagation
     assignment = []
-    solution = DPLL(clauses, assignment)
+    solution = DPLL(clauses, assignment, strategy)
 
+
+def jw_os(open_positions, clauses):
+    ''' Decide which literal gets chosen during a split using Jeroslow-Wang
+    open-positions - set of possible literals which can be split on
+    clauses - set of clauses which these literals occur
+    '''
+    # Keep track of the highest J value calculated for any literal
+    max_j_value = 0
+    # Create a variable to return the selected literal with
+    selected_literal = open_positions[0]
+    # Loop over all literals in the set open_positions to decide which literal has the highest J value
+    if len(open_positions) > 0:
+        for literal in open_positions:
+            j_value = 0
+            for clause in clauses:
+                if literal in clause:
+                    j_value += 2 ** (-abs(len(clause)))
+            if j_value >= max_j_value:
+                max_j_value = j_value
+                selected_literal = literal
+
+    return selected_literal
 
 
 if __name__ == "__main__":
@@ -237,7 +262,7 @@ if __name__ == "__main__":
     }
 
     # Parse the command line input
-    strategy, file = parse_commmand()
+    strategy, file = parse_command()
 
     sudfile = "./testsets/4x4.txt"
 
@@ -255,7 +280,6 @@ if __name__ == "__main__":
     nth_sudoku = 0
     parsedFile = sudfile.split("/")[-1].split(".")[0]
     DIMACS_file = "./sudoku_DIMACS/"+parsedFile+"/"+parsedFile+"_"+str(nth_sudoku)+".cnf"
-
 
     strategy_map[strategy](DIMACS_file) # Strategy based on command line arguments
 
