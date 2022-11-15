@@ -1,6 +1,8 @@
-import shutil
-import sys
 import os
+import shutil
+from functools import reduce
+import sys
+import random
 
 
 def read_sudoku(file, n_lines=-1):
@@ -100,33 +102,138 @@ def sudoku2DIMACS(sudokus, N, sudfile):
             for value in values:
                 f.write(value+" 0\n")
 
-
-def DP(DIMACS_file):
+def BCP(clauses):
     """
-    DP algorithm, keep track of result so we can go back etc.
+    Boolean Constraint Propagation
+    - Every clause (other than the clause itself) containing l is removed (the clause is satisfied if l is).
+    - In every clause that contains -l this literal is deleted (-l can not contribute to it being satisfied)
+    """
+    # Obtain literals that occur in the clauses
+    literals = [clause for clause in clauses if len(clause) == 1]
+    literals = reduce(lambda a, b: a.union(b), literals) # Reduce list of sets
+    neg_literals = set(["-" + literal for literal in literals]) # Negative literals
+    all_literals = neg_literals.union(literals)
+
+    new_clauses = [literals]
+    for clause in clauses:
+        clause_to_remove = clause.intersection(literals)
+
+        # Skip/remove clause if contains literal
+        if len(clause) != len(clause - clause_to_remove):
+            continue
+
+        # Delete the literals that occur in the clause.
+        to_remove = clause.intersection(all_literals)
+        if len(to_remove) > 0:
+            # New clause is the difference between literals and clause
+            clauseDiff = clause.difference(to_remove)
+            if len(clauseDiff) > 0:
+                new_clauses.append(clauseDiff)
+        else:
+            new_clauses.append(clause)
+
+    return new_clauses
+
+
+def evaluate_expression(clauses):
+    """
+    Evaluate an CNF expression.
+    - If there's an empty clause, the expression is invalid.
+    - If there's no clause left, the expression is valid
+    """
+    # Check if there's an empty clause.
+    for clause in clauses:
+        if len(clause) == 0:
+            return False
+
+    # There is a clause that isn't a literal.
+    for clause in clauses:
+        if len(clauses) > 2:
+            return 0
+
+    return True
+
+
+def get_variables(clauses):
+    """
+    Obtain all the positions that are in the CNF.
+    """
+    allPositions = set()
+    for clause in clauses:
+        for position in clause:
+            allPositions.add(position)
+    return sorted(allPositions)
+
+
+def DPLL(clauses, assignment):
+    """
+    DPLL algorithm, keep track of result so we can go back etc.
 
     DIMACS_file - Sudoku DIMACS file
     """
+    new_clauses = BCP(clauses)
+    evaluate_result = evaluate_expression(new_clauses)
 
-    # Convert the file data to a usable format.
+    if evaluate_result is True: # Formula evaluates to True -> return True
+        return True
+    elif evaluate_result is False: # Formula evaluates to False -> return False
+        return False
+    else: # Evaluate result returns 0 which means formula is undecided.
+        # Choose next unassigned variable
+        print(new_clauses)
+        all_positions = set(get_variables(clauses))
+        open_positions = sorted(all_positions.difference(assignment))
+        print("assign: ", len(assignment))
+        print(sorted(assignment))
+        print("allpos: ", len(all_positions))
+        print(sorted(all_positions))
+        print("open: ", open_positions)
+        choice = random.choice(open_positions)
+
+
+        # Return (DPLL with that variable True) || (DPLL with that variable False)
+        solution = None
+        if choice[0] == "-": # First positive choice
+            new_clauses.append(set([choice[0:]]))
+            solution = DPLL(new_clauses, assignment + [choice[0:]])
+        else:
+            new_clauses.append(set([choice]))
+            solution = DPLL(new_clauses, assignment + [choice])
+
+        if not solution: # Negative choice
+            if choice[0] == "-": # Negative choice has been chosen
+                new_clauses.append(set([choice]))
+                solution = DPLL(new_clauses, assignment + [choice])
+            else: # Make choice negative
+                new_clauses.append(set(["-"+choice]))
+                solution = DPLL(new_clauses, assignment + ["-"+choice])
+
+    return solution
+
+
+def DPLL_Strategy(DIMACS_file):
+    """
+    DPLL algorithm, keep track of result so we can go back etc.
+
+    DIMACS_file - Sudoku DIMACS file
+    """
     data = []
     with open(DIMACS_file, "r") as f:
         data = f.readlines()
 
     # First line contains N variables and N clauses
     firstLine, clauses = data[0], data[1:]
+    clauses = [set(clause.split()[:-1]) for clause in clauses] # Remove zeroes
 
-    # TODO: Convert the string data to usable numbers
-
-    # TODO: Insert new numbers
-
-    # TODO: Evaluate the expression
+    # Perform Boolean Constraint Propagation
+    assignment = []
+    solution = DPLL(clauses, assignment)
 
 
 
 if __name__ == "__main__":
     strategy_map = {
-        "-S1": DP,
+        "-S1": DPLL_Strategy,
     }
 
     # Parse the command line input
