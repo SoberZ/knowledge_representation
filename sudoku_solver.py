@@ -197,6 +197,8 @@ def DPLL(clauses, assignment, strategy):
             choice = random.choice(open_positions)
         if strategy == '-S2':
             choice = jw_os(open_positions, clauses)
+        if strategy == '-S3':
+            choice = moms(open_positions, clauses)
 
         # Return (DPLL with that variable True) || (DPLL with that variable False)
         solution = None
@@ -241,10 +243,10 @@ def DPLL_Strategy(DIMACS_file, strategy):
 
 
 def jw_os(open_positions, clauses):
-    ''' Decide which literal gets chosen during a split using Jeroslow-Wang
+    """  Decide which literal gets chosen during a split using Jeroslow-Wang
     open-positions - set of possible literals which can be split on
     clauses - set of clauses which these literals occur
-    '''
+    """
     # Keep track of the highest J value calculated for any literal
     max_j_value = 0
     # Create a variable to return the selected literal with
@@ -259,6 +261,44 @@ def jw_os(open_positions, clauses):
             if j_value >= max_j_value:
                 max_j_value = j_value
                 selected_literal = literal
+
+    return selected_literal
+
+
+def moms(open_positions, clauses):
+    """Decide which literal gets chosen during a split using MOM's heuristic
+    open-positions - set of possible literals which can be split on
+    clauses - set of clauses which these literals occur"""
+    # Initiate used variables
+    selected_literal = open_positions[0]
+    max_score = 0
+    min_clause_length = 99999
+    min_clauses = []
+    moms_score = 0
+    # Loop over all clauses, find minimal clause length and add those clauses to a list
+    for clause in clauses:
+        if len(clause) < min_clause_length:
+            min_clause_length = len(clause)
+            min_clauses = [clause]
+        elif len(clause) == min_clause_length:
+            min_clauses.append(clause)
+    # Loop over all literals in the open_positions to calculate moms score per literal
+    for literal in open_positions:
+        k = 1
+        literal_count = 0
+        neg_literal_count = 0
+        # Count how many times the current literal occurs in the smallest clauses
+        for min_clause in min_clauses:
+            if str(literal) in min_clause:
+                literal_count += 1
+            if str(literal*-1) in min_clause:
+                neg_literal_count += 1
+
+        # Calculate the MOM formula per literal to see if its value is the largest, if so, select it
+        moms_score = ((literal_count + neg_literal_count)* 2**k) + (literal_count*neg_literal_count)
+        if moms_score > max_score:
+            max_score = moms_score
+            selected_literal = literal
 
     return selected_literal
 
