@@ -102,37 +102,12 @@ def sudoku2DIMACS(sudokus, N, sudfile):
             for value in values:
                 f.write(value+" 0\n")
 
-def BCP(clauses):
-    """
-    Boolean Constraint Propagation
-    - Every clause (other than the clause itself) containing l is removed (the clause is satisfied if l is).
-    - In every clause that contains -l this literal is deleted (-l can not contribute to it being satisfied)
-    """
-    # Obtain literals that occur in the clauses
-    literals = [clause for clause in clauses if len(clause) == 1]
-    literals = reduce(lambda a, b: a.union(b), literals) # Reduce list of sets
-    neg_literals = set(["-" + literal for literal in literals]) # Negative literals
-    all_literals = neg_literals.union(literals)
 
-    new_clauses = [literals]
-    for clause in clauses:
-        clause_to_remove = clause.intersection(literals)
-
-        # Skip/remove clause if contains literal
-        if len(clause) != len(clause - clause_to_remove):
-            continue
-
-        # Delete the literals that occur in the clause.
-        to_remove = clause.intersection(all_literals)
-        if len(to_remove) > 0:
-            # New clause is the difference between literals and clause
-            clauseDiff = clause.difference(to_remove)
-            if len(clauseDiff) > 0:
-                new_clauses.append(clauseDiff)
-        else:
-            new_clauses.append(clause)
-
-    return new_clauses
+def element_in_clause(clause, elements):
+    for elem in elements:
+        if elem in clause:
+            return True
+    return False
 
 
 def evaluate_expression(clauses):
@@ -148,7 +123,7 @@ def evaluate_expression(clauses):
 
     # There is a clause that isn't a literal.
     for clause in clauses:
-        if len(clauses) > 2:
+        if len(clause) > 2:
             return 0
 
     return True
@@ -165,6 +140,35 @@ def get_variables(clauses):
     return sorted(allPositions)
 
 
+def BCP(clauses):
+    """
+    Boolean Constraint Propagation
+    - Every clause (other than the clause itself) containing l is removed (the clause is satisfied if l is).
+    - In every clause that contains -l this literal is deleted (-l can not contribute to it being satisfied)
+    """
+    # Obtain literals that occur in the clauses
+    literals = [clause for clause in clauses if len(clause) == 1]
+    literals = reduce(lambda a, b: a.union(b), literals)  # Reduce list of sets
+    already_neg_literals = set([literal for literal in literals if literal[0] == "-"])  # Negative literals
+    neg_literals = set(["-" + literal for literal in literals if literal[0] != "-"]) # Negative literals
+    neg_literals = neg_literals.union(already_neg_literals)
+
+    new_clauses = []
+    for clause in clauses:
+        # Skip/remove clause if contains literal
+        if element_in_clause(clause, literals):
+            continue
+
+        # Delete the literals that occur in the clause.
+        if element_in_clause(clause, neg_literals):
+            new_clauses.append(clause.difference(neg_literals))
+        else:
+            new_clauses.append(clause)
+
+    return new_clauses
+
+
+
 def DPLL(clauses, assignment):
     """
     DPLL algorithm, keep track of result so we can go back etc.
@@ -174,37 +178,30 @@ def DPLL(clauses, assignment):
     new_clauses = BCP(clauses)
     evaluate_result = evaluate_expression(new_clauses)
 
-    if evaluate_result is True: # Formula evaluates to True -> return True
-        return True
-    elif evaluate_result is False: # Formula evaluates to False -> return False
-        return False
-    else: # Evaluate result returns 0 which means formula is undecided.
+    if evaluate_result is True:  # Formula evaluates to True -> return True
+        return assignment
+    elif evaluate_result is False:  # Formula evaluates to False -> return False
+        return []
+    else:  # Evaluate result returns 0 which means formula is undecided.
         # Choose next unassigned variable
-        print(new_clauses)
         all_positions = set(get_variables(clauses))
         open_positions = sorted(all_positions.difference(assignment))
-        print("assign: ", len(assignment))
-        print(sorted(assignment))
-        print("allpos: ", len(all_positions))
-        print(sorted(all_positions))
-        print("open: ", open_positions)
         choice = random.choice(open_positions)
-
 
         # Return (DPLL with that variable True) || (DPLL with that variable False)
         solution = None
-        if choice[0] == "-": # First positive choice
+        if choice[0] == "-":  # First positive choice
             new_clauses.append(set([choice[0:]]))
             solution = DPLL(new_clauses, assignment + [choice[0:]])
         else:
             new_clauses.append(set([choice]))
             solution = DPLL(new_clauses, assignment + [choice])
 
-        if not solution: # Negative choice
-            if choice[0] == "-": # Negative choice has been chosen
+        if not solution:  # Negative choice
+            if choice[0] == "-":  # Negative choice has been chosen
                 new_clauses.append(set([choice]))
                 solution = DPLL(new_clauses, assignment + [choice])
-            else: # Make choice negative
+            else:  # Make choice negative
                 new_clauses.append(set(["-"+choice]))
                 solution = DPLL(new_clauses, assignment + ["-"+choice])
 
@@ -223,12 +220,13 @@ def DPLL_Strategy(DIMACS_file):
 
     # First line contains N variables and N clauses
     firstLine, clauses = data[0], data[1:]
-    clauses = [set(clause.split()[:-1]) for clause in clauses] # Remove zeroes
+    clauses = [set(clause.split()[:-1]) for clause in clauses]  # Remove zeroes
 
     # Perform Boolean Constraint Propagation
     assignment = []
     solution = DPLL(clauses, assignment)
 
+    return solution
 
 
 if __name__ == "__main__":
@@ -254,11 +252,12 @@ if __name__ == "__main__":
     # Implement DP + two heuristics
     nth_sudoku = 0
     parsedFile = sudfile.split("/")[-1].split(".")[0]
-    DIMACS_file = "./sudoku_DIMACS/"+parsedFile+"/"+parsedFile+"_"+str(nth_sudoku)+".cnf"
+    DIMACS_file = "./sudoku_DIMACS/"+parsedFile + \
+        "/"+parsedFile+"_"+str(nth_sudoku)+".cnf"
 
+    # Strategy based on command line arguments
+    result = strategy_map[strategy](DIMACS_file)
+    print(result)
 
-    strategy_map[strategy](DIMACS_file) # Strategy based on command line arguments
 
     # Write output (=variable assignments) as DIMACS file
-
-
