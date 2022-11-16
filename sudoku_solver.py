@@ -263,6 +263,25 @@ def jw_os(open_positions, clauses):
     return selected_literal
 
 
+def sudoku_print(sudoku, N):
+    """Use function to print sudoku's with, easier visible to check
+    sudoku - the sudoku with positions as '111' format which means value 1 on row 1 column 1"""
+    print_sudoku = []
+    for i in range(N):
+        row = []
+        print_sudoku.append(row)
+        for j in range(N):
+            row.append('0')
+            
+    for position in sudoku:
+        if len(position) == 3:
+            if print_sudoku[int(position[0])-1][int(position[1])-1] not in ('0', str(position[2])):
+                print('FOUT IN SUDOKU!! MEERDERE ASSIGNMENTS VOOR DEZELDE PLEKKEN')
+            print_sudoku[int(position[0])-1][int(position[1])-1] = position[2]
+    for row in print_sudoku:
+        print(row)
+
+
 if __name__ == "__main__":
     # Parse the command line input
     strategy, file = parse_command()
@@ -287,6 +306,6 @@ if __name__ == "__main__":
 
     # Strategy based on command line arguments
     result = DPLL_Strategy(DIMACS_file, strategy)
-    print(result)
+    sudoku_print(result, N)
 
     # Write output (=variable assignments) as DIMACS file
