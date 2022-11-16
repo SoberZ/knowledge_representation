@@ -102,7 +102,12 @@ def sudoku2DIMACS(sudokus, N, sudfile):
             for value in values:
                 f.write(value+" 0\n")
 
+
 def element_in_clause(clause, elements):
+    """
+    Check if there is an element in the elements list occuring in
+    the clause.
+    """
     for elem in elements:
         if elem in clause:
             return True
@@ -148,8 +153,11 @@ def BCP(clauses):
     # Obtain literals that occur in the clauses
     literals = [clause for clause in clauses if len(clause) == 1]
     literals = reduce(lambda a, b: a.union(b), literals)  # Reduce list of sets
-    already_neg_literals = set([literal for literal in literals if literal[0] == "-"])  # Negative literals
-    neg_literals = set(["-" + literal for literal in literals if literal[0] != "-"]) # Negative literals
+    already_neg_literals = set(
+        [literal for literal in literals if literal[0] == "-"])  # Negative literals
+    # Negative literals
+    neg_literals = set(
+        ["-" + literal for literal in literals if literal[0] != "-"])
     neg_literals = neg_literals.union(already_neg_literals)
 
     new_clauses = []
@@ -184,8 +192,7 @@ def DPLL(clauses, assignment, strategy):
         # Choose next unassigned variable
         all_positions = set(get_variables(clauses))
         open_positions = sorted(all_positions.difference(assignment))
-        choice = random.choice(open_positions)
-        
+
         if strategy == '-S1':
             choice = random.choice(open_positions)
         if strategy == '-S2':
@@ -204,9 +211,10 @@ def DPLL(clauses, assignment, strategy):
             if choice[0] == "-":  # Negative choice has been chosen
                 new_clauses.append(set([choice]))
                 solution = DPLL(new_clauses, assignment + [choice], strategy)
-            else: # Make choice negative
+            else:  # Make choice negative
                 new_clauses.append(set(["-"+choice]))
-                solution = DPLL(new_clauses, assignment + ["-"+choice], strategy)
+                solution = DPLL(new_clauses, assignment +
+                                ["-"+choice], strategy)
 
     return solution
 
@@ -228,7 +236,7 @@ def DPLL_Strategy(DIMACS_file, strategy):
     # Perform Boolean Constraint Propagation
     assignment = []
     solution = DPLL(clauses, assignment, strategy)
-    
+
     return solution
 
 
@@ -256,10 +264,6 @@ def jw_os(open_positions, clauses):
 
 
 if __name__ == "__main__":
-    strategy_map = {
-        "-S1": DPLL_Strategy,
-    }
-
     # Parse the command line input
     strategy, file = parse_command()
 
@@ -280,10 +284,9 @@ if __name__ == "__main__":
     parsedFile = sudfile.split("/")[-1].split(".")[0]
     DIMACS_file = "./sudoku_DIMACS/"+parsedFile + \
         "/"+parsedFile+"_"+str(nth_sudoku)+".cnf"
-    
-    # Strategy based on command line arguments
-    result = strategy_map[strategy](DIMACS_file, strategy)
-    print(result)
 
+    # Strategy based on command line arguments
+    result = DPLL_Strategy(DIMACS_file, strategy)
+    print(result)
 
     # Write output (=variable assignments) as DIMACS file
