@@ -5,7 +5,6 @@ import sys
 import random
 import time
 
-
 def read_sudoku(file, n_lines=-1):
     """
     Read n sudokus from a file.
@@ -104,36 +103,6 @@ def sudoku2DIMACS(sudokus, N, sudfile):
                 f.write(value+" 0\n")
 
 
-def element_in_clause(clause, elements):
-    """
-    Check if there is an element in the elements list occuring in
-    the clause.
-    """
-    for elem in elements:
-        if elem in clause:
-            return True
-    return False
-
-
-def evaluate_expression(clauses):
-    """
-    Evaluate an CNF expression.
-    - If there's an empty clause, the expression is invalid.
-    - If there's no clause left, the expression is valid
-    """
-    # Check if there's an empty clause.
-    for clause in clauses:
-        if len(clause) == 0:
-            return False
-
-    # There is a clause that isn't a literal.
-    for clause in clauses:
-        if len(clause) > 1:
-            return 0
-
-    return True
-
-
 def get_variables(clauses):
     """
     Obtain all the positions that are in the CNF.
@@ -142,14 +111,14 @@ def get_variables(clauses):
     for clause in clauses:
         for position in clause:
             allPositions += [position]
-    return list(set(allPositions))
+    return allPositions
 
 
 def negate_unit(unit):
     """
     Negation of a string unit.
     """
-    return unit[1:] if unit[0] == "-" else "-"+unit
+    return unit[1:] if unit[0] == "-" else "-" + unit
 
 
 def single_BCP(clauses, unit):
@@ -163,7 +132,7 @@ def single_BCP(clauses, unit):
         negation_unit = negate_unit(unit)
         if negation_unit in clause:
             new_clause = [x for x in clause if x != negation_unit]
-            if not new_clause:
+            if new_clause == []:
                 return -1
             new_clauses.append(new_clause)
         else:
@@ -171,19 +140,20 @@ def single_BCP(clauses, unit):
     return new_clauses
 
 
-def unit_prop(clauses):
+def unit_propagation(clauses):
     assignment = []
+    new_clauses = []
     unit_clauses = [clause for clause in clauses if len(clause) == 1]
-    while unit_clauses:
-        unit = unit_clauses[0]
-        clauses = single_BCP(clauses, unit[0])
-        assignment += [unit[0]]
-        if clauses == -1:
+    for unit in unit_clauses:
+        new_clauses = single_BCP(clauses, unit[0])
+        assignment.append(unit[0])
+        if new_clauses == -1:
+            return new_clauses, assignment
+        if not new_clauses:
             return -1, []
-        if not clauses:
-            return clauses, assignment
-        unit_clauses = [clause for clause in clauses if len(clause) == 1]
-    return clauses, assignment
+        unit_clauses = [clause for clause in new_clauses if len(clause) == 1]
+
+    return new_clauses, assignment
 
 
 def DPLL(clauses, assignment, strategy):
@@ -192,15 +162,21 @@ def DPLL(clauses, assignment, strategy):
 
     DIMACS_file - Sudoku DIMACS file
     """
-    new_clauses, new_assign = unit_prop(clauses)
+    global n_propagations
+    n_propagations += 1
+    print(n_propagations)
+
+    new_clauses, new_assign = unit_propagation(clauses)
     assignment += new_assign
 
     if new_clauses == -1:
+        global n_backtrack
+        n_backtrack += 1
         return []
-    if not new_clauses:
+    if new_clauses == []:
         return assignment
 
-    all_positions = sorted(get_variables(new_clauses))
+    all_positions = get_variables(new_clauses)
 
     # Choose next unassigned variable
     if strategy == '-S2':
@@ -241,7 +217,12 @@ def DPLL_Strategy(DIMACS_file, strategy):
 
     # Perform Boolean Constraint Propagation
     assignment = []
+    start_time = time.time()
     solution = DPLL(new_clauses, assignment, strategy)
+    end_time = time.time()
+
+    global time_lapsed
+    time_lapsed += end_time - start_time
 
     return solution
 
@@ -328,8 +309,6 @@ def sudoku_print(sudoku, N):
 if __name__ == "__main__":
     # Parse the command line input
     strategy, sudfile = parse_command()
-    # strategy = "-S1"
-    # sudfile = "./testsets/top91.sdk.txt"
 
     # Read sudoku from file.
     n_sudokus = 10
@@ -342,24 +321,27 @@ if __name__ == "__main__":
     # Read the problem (=clauses) as DIMACS file
     sudoku2DIMACS(sudlist, N, sudfile)
 
-
+    total_backtrack = 0
+    n_backtrack = 0
     time_lapsed = 0
+    n_propagations = 0
 
     # Implement DP + two heuristics
-    for i in range(0, len(sudlist)):
+    for i in range(0, n_sudokus):
+        n_backtrack = 0
+        n_propagations = 0
+
         parsedFile = sudfile.split("/")[-1].split(".")[0]
         DIMACS_file = "./sudoku_DIMACS/"+parsedFile + \
             "/"+parsedFile+"_"+str(i)+".cnf"
-
-        start_time = time.time()
-        # Strategy based on command line arguments
         result = DPLL_Strategy(DIMACS_file, strategy)
-        end_time = time.time()
-
-        time_lapsed += end_time - start_time
-
         # sudoku_print(result, N)
+        print("N backtrack: ", n_backtrack)
+        total_backtrack += n_backtrack
 
     print("total time: ", time_lapsed)
+    print("avg time: ", time_lapsed/n_sudokus)
+    print("avg backtracks: ", total_backtrack/n_sudokus)
+    print("avg evaluations: ", n_propagations/n_sudokus)
 
     # Write output (=variable assignments) as DIMACS file
