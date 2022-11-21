@@ -1,0 +1,15 @@
+-S1 ./testsets/top100.sdk.txt
+total time:  528.0845291614532
+avg time:  5.280845291614533
+avg backtracks:  82.64
+avg evaluations:  4.81
+
+-S2 ./testsets/top100.sdk.txt
+
+
+
+-S3 ./testsets/top100.sdk.txt
+total time:  262.66585969924927
+avg time:  2.6266585969924927
+avg backtracks:  20.31
+avg evaluations:  0.05

@@ -141,14 +141,17 @@ def single_BCP(clauses, unit):
             new_clauses.append(clause)
     return new_clauses
 
+
 def evaluate_expression(clauses):
     for clause in clauses:
         if not len(clause):
             return False
     return True
 
+
 def get_unit_clauses(clauses):
     return list(filter(lambda x: len(x) == 1, clauses))
+
 
 def unit_propagation(clauses):
     assignment = []
@@ -165,7 +168,6 @@ def unit_propagation(clauses):
     return clauses, assignment
 
 
-
 def DPLL(clauses, assignment, strategy):
     """
     DPLL algorithm, keep track of result so we can go back etc.
@@ -174,7 +176,6 @@ def DPLL(clauses, assignment, strategy):
     """
     global n_propagations
     n_propagations += 1
-
     new_clauses, new_assign = unit_propagation(clauses)
     assignment += new_assign
 
@@ -189,7 +190,8 @@ def DPLL(clauses, assignment, strategy):
 
     # Choose next unassigned variable
     if strategy == '-S2':
-        choice = jw_os(all_positions, new_clauses)
+        choice = jeroslow_wang(new_clauses)
+        # choice = jw_os(all_positions, new_clauses)
     elif strategy == '-S3':
         choice = moms(all_positions, new_clauses)
     else: # strategy == '-S1' or default
@@ -235,6 +237,20 @@ def DPLL_Strategy(DIMACS_file, strategy):
     return solution
 
 
+def get_abolute_literal(literal):
+    return literal[1:] if literal[0] == "-" else literal
+
+def get_weighted_counter(formula, weight=2):
+    counter = {}
+    for clause in formula:
+        for literal in clause:
+            if literal in counter:
+                counter[literal] += weight ** -len(clause)
+            else:
+                counter[literal] = weight ** -len(clause)
+    return counter
+
+
 def jw_os(literals, clauses):
     """  Decide which literal gets chosen during a split using Jeroslow-Wang
     open-positions - set of possible literals which can be split on
@@ -242,19 +258,24 @@ def jw_os(literals, clauses):
     """
     # Keep track of the highest J value calculated for any literal
     max_j_value = 0
+
     # Create a variable to return the selected literal with
     selected_literal = literals[0]
+
     # Loop over all literals in the set literals to decide which literal has the highest J value
     for literal in literals:
         j_value = 0
         for clause in clauses:
             if literal in clause:
                 j_value += 2 ** (-len(clause))
-        if j_value >= max_j_value:
+        if j_value > max_j_value:
             max_j_value = j_value
             selected_literal = literal
     return selected_literal
 
+def jeroslow_wang(formula):
+    counter = get_weighted_counter(formula)
+    return max(counter, key=counter.get)
 
 def moms(open_positions, clauses):
     """Decide which literal gets chosen during a split using MOM's heuristic
@@ -328,7 +349,7 @@ if __name__ == "__main__":
     sudoku2DIMACS(sudlist, N, sudfile)
 
     # Implement DP + two heuristics
-    numer_of_sudokus =len(sudlist)
+    numer_of_sudokus = len(sudlist)
     for i in range(0, numer_of_sudokus):
         n_backtrack = 0
         n_propagations = 0
