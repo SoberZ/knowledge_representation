@@ -5,6 +5,11 @@ import sys
 import random
 import time
 
+total_backtrack = 0
+n_backtrack = 0
+time_lapsed = 0
+n_propagations = 0
+
 def read_sudoku(file, n_lines=-1):
     """
     Read n sudokus from a file.
@@ -127,33 +132,38 @@ def single_BCP(clauses, unit):
         # Whole clause is true, therefore delete
         if unit in clause:
             continue
-
         # Negative of the unit is in clause, remove unit
         negation_unit = negate_unit(unit)
         if negation_unit in clause:
-            new_clause = [x for x in clause if x != negation_unit]
-            if new_clause == []:
-                return -1
+            new_clause = list(set(clause).difference(set([negation_unit])))
             new_clauses.append(new_clause)
         else:
             new_clauses.append(clause)
     return new_clauses
 
+def evaluate_expression(clauses):
+    for clause in clauses:
+        if not len(clause):
+            return False
+    return True
+
+def get_unit_clauses(clauses):
+    return list(filter(lambda x: len(x) == 1, clauses))
 
 def unit_propagation(clauses):
     assignment = []
-    new_clauses = []
-    unit_clauses = [clause for clause in clauses if len(clause) == 1]
-    for unit in unit_clauses:
-        new_clauses = single_BCP(clauses, unit[0])
+    unit_clauses = get_unit_clauses(clauses)
+    while unit_clauses:
+        unit = unit_clauses[0]
+        clauses = single_BCP(clauses, unit[0])
         assignment.append(unit[0])
-        if new_clauses == -1:
-            return new_clauses, assignment
-        if not new_clauses:
+        if not evaluate_expression(clauses):
             return -1, []
-        unit_clauses = [clause for clause in new_clauses if len(clause) == 1]
+        if not len(clauses):
+            return clauses, assignment
+        unit_clauses = get_unit_clauses(clauses)
+    return clauses, assignment
 
-    return new_clauses, assignment
 
 
 def DPLL(clauses, assignment, strategy):
@@ -164,7 +174,6 @@ def DPLL(clauses, assignment, strategy):
     """
     global n_propagations
     n_propagations += 1
-    print(n_propagations)
 
     new_clauses, new_assign = unit_propagation(clauses)
     assignment += new_assign
@@ -186,7 +195,6 @@ def DPLL(clauses, assignment, strategy):
     else: # strategy == '-S1' or default
         choice = random.choice(all_positions)
 
-    # Return (DPLL with that variable True) || (DPLL with that variable False)
     solution = DPLL(new_clauses + [[choice]], assignment + [choice], strategy)
     if not solution:
         negation_choice = negate_unit(choice)
@@ -227,7 +235,7 @@ def DPLL_Strategy(DIMACS_file, strategy):
     return solution
 
 
-def jw_os(open_positions, clauses):
+def jw_os(literals, clauses):
     """  Decide which literal gets chosen during a split using Jeroslow-Wang
     open-positions - set of possible literals which can be split on
     clauses - set of clauses which these literals occur
@@ -235,18 +243,16 @@ def jw_os(open_positions, clauses):
     # Keep track of the highest J value calculated for any literal
     max_j_value = 0
     # Create a variable to return the selected literal with
-    selected_literal = open_positions[0]
-    # Loop over all literals in the set open_positions to decide which literal has the highest J value
-    if len(open_positions) > 0:
-        for literal in open_positions:
-            j_value = 0
-            for clause in clauses:
-                if literal in clause:
-                    j_value += 2 ** (-abs(len(clause)))
-            if j_value >= max_j_value:
-                max_j_value = j_value
-                selected_literal = literal
-
+    selected_literal = literals[0]
+    # Loop over all literals in the set literals to decide which literal has the highest J value
+    for literal in literals:
+        j_value = 0
+        for clause in clauses:
+            if literal in clause:
+                j_value += 2 ** (-len(clause))
+        if j_value >= max_j_value:
+            max_j_value = j_value
+            selected_literal = literal
     return selected_literal
 
 
@@ -311,7 +317,7 @@ if __name__ == "__main__":
     strategy, sudfile = parse_command()
 
     # Read sudoku from file.
-    n_sudokus = 10
+    n_sudokus = -1
     sudlist = read_sudoku(sudfile, n_sudokus)
 
     # Find N x N dimension for sudoku.
@@ -321,13 +327,9 @@ if __name__ == "__main__":
     # Read the problem (=clauses) as DIMACS file
     sudoku2DIMACS(sudlist, N, sudfile)
 
-    total_backtrack = 0
-    n_backtrack = 0
-    time_lapsed = 0
-    n_propagations = 0
-
     # Implement DP + two heuristics
-    for i in range(0, n_sudokus):
+    numer_of_sudokus =len(sudlist)
+    for i in range(0, numer_of_sudokus):
         n_backtrack = 0
         n_propagations = 0
 
@@ -340,8 +342,8 @@ if __name__ == "__main__":
         total_backtrack += n_backtrack
 
     print("total time: ", time_lapsed)
-    print("avg time: ", time_lapsed/n_sudokus)
-    print("avg backtracks: ", total_backtrack/n_sudokus)
-    print("avg evaluations: ", n_propagations/n_sudokus)
+    print("avg time: ", time_lapsed/numer_of_sudokus)
+    print("avg backtracks: ", total_backtrack/numer_of_sudokus)
+    print("avg evaluations: ", n_propagations/numer_of_sudokus)
 
     # Write output (=variable assignments) as DIMACS file
