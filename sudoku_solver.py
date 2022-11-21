@@ -10,6 +10,7 @@ n_backtrack = 0
 time_lapsed = 0
 n_propagations = 0
 
+
 def read_sudoku(file, n_lines=-1):
     """
     Read n sudokus from a file.
@@ -40,7 +41,7 @@ def parse_command():
     """
 
     strategy = "-S1"
-    file = "./example_sudokus/4x4.txt"
+    file = "./testsets/4x4.txt"
 
     if len(sys.argv) > 1:
         strategy = sys.argv[1]
@@ -135,7 +136,7 @@ def single_BCP(clauses, unit):
         # Negative of the unit is in clause, remove unit
         negation_unit = negate_unit(unit)
         if negation_unit in clause:
-            new_clause = list(set(clause).difference(set([negation_unit])))
+            new_clause = list(set(clause).difference({negation_unit}))
             new_clauses.append(new_clause)
         else:
             new_clauses.append(clause)
@@ -183,20 +184,19 @@ def DPLL(clauses, assignment, strategy):
         global n_backtrack
         n_backtrack += 1
         return []
-    if new_clauses == []:
+    if not new_clauses:
         return assignment
 
     all_positions = get_variables(new_clauses)
 
     # Choose next unassigned variable
     if strategy == '-S2':
-        choice = jeroslow_wang(new_clauses)
-        # choice = jw_os(all_positions, new_clauses)
+        choice = jw_os(all_positions, new_clauses)
     elif strategy == '-S3':
         choice = moms(all_positions, new_clauses)
     else: # strategy == '-S1' or default
         choice = random.choice(all_positions)
-
+    print('choice=',choice)
     solution = DPLL(new_clauses + [[choice]], assignment + [choice], strategy)
     if not solution:
         negation_choice = negate_unit(choice)
@@ -257,25 +257,41 @@ def jw_os(literals, clauses):
     clauses - set of clauses which these literals occur
     """
     # Keep track of the highest J value calculated for any literal
+    print('JW_OS starts')
     max_j_value = 0
 
     # Create a variable to return the selected literal with
     selected_literal = literals[0]
 
-    # Loop over all literals in the set literals to decide which literal has the highest J value
+    print('selected_literal=',selected_literal)
+    positive_literals = []
+    negative_literals = []
+
     for literal in literals:
+        if int(literal) >= 0:
+            positive_literals.append(literal)
+        else:
+            negative_literals.append(literal)
+    # Loop over all literals in the set literals to decide which literal has the highest J value
+
+    for literal in positive_literals:
         j_value = 0
+
         for clause in clauses:
             if literal in clause:
                 j_value += 2 ** (-len(clause))
-        if j_value > max_j_value:
+
+        if j_value >= max_j_value:
+            print('positive now new')
+            print('j_value=', j_value, 'max_j_value=', max_j_value)
             max_j_value = j_value
             selected_literal = literal
+            print('selected_p_literal is now:', selected_literal)
+    print(negative_literals)
+    print(positive_literals)
     return selected_literal
 
-def jeroslow_wang(formula):
-    counter = get_weighted_counter(formula)
-    return max(counter, key=counter.get)
+
 
 def moms(open_positions, clauses):
     """Decide which literal gets chosen during a split using MOM's heuristic
@@ -366,5 +382,6 @@ if __name__ == "__main__":
     print("avg time: ", time_lapsed/numer_of_sudokus)
     print("avg backtracks: ", total_backtrack/numer_of_sudokus)
     print("avg evaluations: ", n_propagations/numer_of_sudokus)
+    sudoku_print(result, N)
 
     # Write output (=variable assignments) as DIMACS file
