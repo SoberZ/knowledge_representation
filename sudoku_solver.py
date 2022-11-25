@@ -155,8 +155,14 @@ def get_unit_clauses(clauses):
 
 
 def unit_propagation(clauses):
+    """
+    Unit propagation for the DPLL algorithm.
+    While there exist unit clauses (even after
+    reducing the clauses), do BCP.
+    """
     assignment = []
     unit_clauses = get_unit_clauses(clauses)
+    unit = None
     while unit_clauses:
         unit = unit_clauses[0]
         clauses = single_BCP(clauses, unit[0])
@@ -196,7 +202,7 @@ def DPLL(clauses, assignment, strategy):
         choice = moms(all_positions, new_clauses)
     else: # strategy == '-S1' or default
         choice = random.choice(all_positions)
-    print('choice=',choice)
+
     solution = DPLL(new_clauses + [[choice]], assignment + [choice], strategy)
     if not solution:
         negation_choice = negate_unit(choice)
@@ -237,19 +243,6 @@ def DPLL_Strategy(DIMACS_file, strategy):
     return solution
 
 
-def get_abolute_literal(literal):
-    return literal[1:] if literal[0] == "-" else literal
-
-def get_weighted_counter(formula, weight=2):
-    counter = {}
-    for clause in formula:
-        for literal in clause:
-            if literal in counter:
-                counter[literal] += weight ** -len(clause)
-            else:
-                counter[literal] = weight ** -len(clause)
-    return counter
-
 
 def jw_os(literals, clauses):
     """  Decide which literal gets chosen during a split using Jeroslow-Wang
@@ -257,13 +250,13 @@ def jw_os(literals, clauses):
     clauses - set of clauses which these literals occur
     """
     # Keep track of the highest J value calculated for any literal
-    print('JW_OS starts')
+    # print('JW_OS starts')
     max_j_value = 0
 
     # Create a variable to return the selected literal with
     selected_literal = literals[0]
 
-    print('selected_literal=',selected_literal)
+    # print('selected_literal=',selected_literal)
     positive_literals = []
     negative_literals = []
 
@@ -272,8 +265,8 @@ def jw_os(literals, clauses):
             positive_literals.append(literal)
         else:
             negative_literals.append(literal)
-    # Loop over all literals in the set literals to decide which literal has the highest J value
 
+    # Loop over all literals in the set literals to decide which literal has the highest J value
     for literal in positive_literals:
         j_value = 0
 
@@ -282,13 +275,13 @@ def jw_os(literals, clauses):
                 j_value += 2 ** (-len(clause))
 
         if j_value >= max_j_value:
-            print('positive now new')
-            print('j_value=', j_value, 'max_j_value=', max_j_value)
+            # print('positive now new')
+            # print('j_value=', j_value, 'max_j_value=', max_j_value)
             max_j_value = j_value
             selected_literal = literal
-            print('selected_p_literal is now:', selected_literal)
-    print(negative_literals)
-    print(positive_literals)
+            # print('selected_p_literal is now:', selected_literal)
+    # print(negative_literals)
+    # print(positive_literals)
     return selected_literal
 
 
@@ -366,6 +359,7 @@ if __name__ == "__main__":
 
     # Implement DP + two heuristics
     numer_of_sudokus = len(sudlist)
+    result = None
     for i in range(0, numer_of_sudokus):
         n_backtrack = 0
         n_propagations = 0
