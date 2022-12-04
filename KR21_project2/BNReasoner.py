@@ -44,10 +44,26 @@ class BNReasoner:
     def marginalization(self):
         pass
 
-    def maxing_out(self):
-        pass
+    def maxing_out(self, variable):
+        """
+        :param variable: The variable which you want to max-out on
+        """
+        # For every CPT waar variable in zit, als de andere kolommen behalve variable en p hetzelfde zijn,
+        # Moet je de max p kolom bewaren en de andere weg doen.
+        for current_var in self.bn.get_all_variables():
+
+            if variable in self.bn.get_cpt(current_var):
+
+                cpt_without_cur = self.bn.get_cpt(current_var).loc[:, self.bn.get_cpt(current_var).columns != variable]
+                cpt_without_cur_p = cpt_without_cur.loc[:, cpt_without_cur.columns != 'p']
+                df = cpt_without_cur_p.groupby(list(cpt_without_cur_p)).apply(lambda x: tuple(x.index)).tolist()
+
+                for index_tuple in df:
+                    CPT = self.bn.get_cpt(current_var)
+                    print(CPT.loc[[index_tuple[0],index_tuple[1]]].max(numeric_only=True))
+
 
 
 if __name__ == "__main__":
     BN = BNReasoner('testing/lecture_example.BIFXML')
-    BN.network_pruning('Rain?', 'False')
+    BN.maxing_out('Rain?')
