@@ -36,8 +36,17 @@ class BNReasoner:
         for node_tuple in remove_set:
             self.bn.del_edge((node_tuple[0], node_tuple[1]))
 
-    def marginalization(self):
-        pass
+    def marginalization(self, variable):
+        """
+        :param variable: The variable which you want to marginalize (sum-out)
+        """
+        for current_var in self.bn.get_all_variables():
+            if variable in self.bn.get_cpt(current_var):
+                group_cols = self.bn.get_cpt(current_var).columns.tolist()
+                group_cols.remove(variable)
+                group_cols.remove('p')
+                df2 = self.bn.get_cpt(current_var).groupby(group_cols, as_index=False)['p'].sum()
+                self.bn.update_cpt(current_var, df2)
 
     def maxing_out(self, variable):
         """
@@ -47,14 +56,15 @@ class BNReasoner:
         # with the lowest score are removed. The self.bn is then updated using the new dataframe.
         for current_var in self.bn.get_all_variables():
             if variable in self.bn.get_cpt(current_var):
-                df_new = self.bn.get_cpt(current_var)\
-                    .sort_values('p', ascending=False).drop_duplicates(
-                    subset=self.bn.get_cpt(current_var).columns.difference(
-                        [variable, 'p'])).sort_index()
+                df_new = self.bn.get_cpt(current_var).sort_values('p', ascending=False)
+                df_new = df_new.drop_duplicates(subset=self.bn.get_cpt(current_var).columns.difference([variable, 'p'])).sort_index()
+                df_new['extended_factors'] = df_new.loc[:, variable]
                 df_new = df_new.drop(labels=variable ,axis='columns')
                 self.bn.update_cpt(current_var, df_new)
+                print(self.bn.get_cpt(current_var))
 
 
 if __name__ == "__main__":
+    # Hardcoded voorbeeld om stuk te testen
     BN = BNReasoner('testing/lecture_example.BIFXML')
-    BN.network_pruning('Rain?', False)
+    BN.marginalization('Rain?')
