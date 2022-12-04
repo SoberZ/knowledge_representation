@@ -23,15 +23,10 @@ class BNReasoner:
         """
         # Remove rows from cpt which do not agree with the evidence of the variable
         for current_var in self.bn.get_all_variables():
-            removing_row_set = set()
-            if variable in self.bn.get_cpt(current_var):
-                for index, row in self.bn.get_cpt(current_var).iterrows():
-                    if str(row[variable]) != str(evidence):
-                        removing_row_set.add(index)
-                for remove_index in removing_row_set:
-                    self.bn.update_cpt(current_var, self.bn.get_cpt(current_var).drop(remove_index))
-                print('current cpt after removing rain=true:')
-                print(self.bn.get_cpt(current_var))
+            CPT = self.bn.get_cpt(current_var)
+            if variable in CPT:
+                CPT = CPT[CPT[variable] == evidence]
+            self.bn.update_cpt(current_var, CPT)
 
         # Remove all edges which have the selected variable as first node (directed)
         remove_set = set()
@@ -62,4 +57,4 @@ class BNReasoner:
 
 if __name__ == "__main__":
     BN = BNReasoner('testing/lecture_example.BIFXML')
-    BN.maxing_out('Rain?')
+    BN.network_pruning('Rain?', False)
