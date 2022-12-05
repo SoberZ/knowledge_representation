@@ -15,7 +15,6 @@ class BNReasoner:
         else:
             self.bn = net
 
-    # TODO: This is where your methods should go
     def network_pruning(self, variable, evidence):
         """
         :param variable: Variable which has known evidence to prune network with
@@ -64,7 +63,27 @@ class BNReasoner:
                 print(self.bn.get_cpt(current_var))
 
 
+    def d_separation(self, X, Y, Z):
+        """
+        X, Y - Sets of Nodes to check for d-separation
+        Z - Evidence
+        D-Separation algorithm. X and Y are d-separated by Z iff every
+        path between a node in X to a node in Y is d-blocked by Z.
+        """
+
+        # self.network_pruning()
+        # Check if there is a path from X to Y
+
+        pass
+
+    def independence():
+        pass
+
+    def variable_elimination():
+        pass
+
 if __name__ == "__main__":
     # Hardcoded voorbeeld om stuk te testen
     BN = BNReasoner('testing/lecture_example.BIFXML')
     BN.marginalization('Rain?')
+    BN.bn.draw_structure()
