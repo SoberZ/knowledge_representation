@@ -77,7 +77,6 @@ class BNReasoner:
         search_nodes = [start] # Nodes to find paths from.
         while len(search_nodes) > 0:
                 node = search_nodes.pop()
-
                 if node == end:
                     return False
 
@@ -109,15 +108,23 @@ class BNReasoner:
                     res = res and self.find_path(reasoner_copy, start, end)
         return res
 
-    def independence(self):
-        pass
+    def independence(self, X, Y, Z):
+        """
+        Given three sets of variables X, Y, and Z,
+        determine whether X is independent of Y given Z.
+        D-separation implies independence.
+        """
+        return self.d_separation(X, Y, Z)
 
     def variable_elimination(self):
+        """
+
+        """
         pass
 
 if __name__ == "__main__":
     # Hardcoded voorbeeld om stuk te testen
     BN = BNReasoner('testing/lecture_example.BIFXML')
-    chekc = BN.d_separation(["Slippery Road?"], ["Wet Grass?", "Winter?"], ["Winter?"])
+    chekc = BN.independence(["Slippery Road?"], ["Sprinkler?"], ["Winter?", "Rain?"])
     print(chekc)
     # BN.bn.draw_structure()
