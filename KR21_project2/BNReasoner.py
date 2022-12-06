@@ -1,5 +1,10 @@
+import os
+# OpenMP problem fix. Remove if it causes problems.
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
+
 from typing import Union
 from BayesNet import BayesNet
+import networkx as nx
 
 
 class BNReasoner:
@@ -62,6 +67,26 @@ class BNReasoner:
                 self.bn.update_cpt(current_var, df_new)
                 print(self.bn.get_cpt(current_var))
 
+    def find_path(self, reasoner, start, end):
+        """
+        Find a path between two nodes. If there exists a path,
+        this means we have no d-separation so we return False.
+        If there is no such a path, return True.
+        """
+        visited = [] # The nodes that have been visited
+        search_nodes = [start] # Nodes to find paths from.
+        while len(search_nodes) > 0:
+                node = search_nodes.pop()
+
+                if node == end:
+                    return False
+
+                if node not in visited:
+                    visited.append(node)
+                    neighbors = list(nx.all_neighbors(reasoner.bn.structure, node))
+                    for neighbor in neighbors:
+                        search_nodes.append(neighbor)
+        return True
 
     def d_separation(self, X, Y, Z):
         """
@@ -70,20 +95,29 @@ class BNReasoner:
         D-Separation algorithm. X and Y are d-separated by Z iff every
         path between a node in X to a node in Y is d-blocked by Z.
         """
+        reasoner_copy = BNReasoner(self.bn)
+        for evidence in Z:
+            reasoner_copy.network_pruning(evidence, True)
 
-        # self.network_pruning()
-        # Check if there is a path from X to Y
+        res = True
+        for start in X:
+            for end in Y:
+                # End in evidence is d-separated.
+                if end in Z:
+                    res = res and True
+                else:
+                    res = res and self.find_path(reasoner_copy, start, end)
+        return res
 
+    def independence(self):
         pass
 
-    def independence():
-        pass
-
-    def variable_elimination():
+    def variable_elimination(self):
         pass
 
 if __name__ == "__main__":
     # Hardcoded voorbeeld om stuk te testen
     BN = BNReasoner('testing/lecture_example.BIFXML')
-    BN.marginalization('Rain?')
-    BN.bn.draw_structure()
+    chekc = BN.d_separation(["Slippery Road?"], ["Wet Grass?", "Winter?"], ["Winter?"])
+    print(chekc)
+    # BN.bn.draw_structure()
