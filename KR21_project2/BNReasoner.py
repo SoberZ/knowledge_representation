@@ -59,7 +59,7 @@ class BNReasoner:
         # A new Dataframe is made per CPT in which the rows are sorted on score and the duplicates
         # with the lowest score are removed. The self.bn is then updated using the new dataframe.
         for current_var in self.bn.get_all_variables():
-            if variable in self.bn.get_cpt(current_var):
+            if variable in self.bn.get_cpt(current_var).columns:
                 df_new = self.bn.get_cpt(current_var).sort_values('p', ascending=False)
                 df_new = df_new.drop_duplicates(subset=self.bn.get_cpt(current_var).columns.difference([variable, 'p'])).sort_index()
                 new_extended_factor = variable + '= ' + str(df_new.loc[:, variable].tolist()[0])
@@ -140,7 +140,32 @@ class BNReasoner:
         # maximize-out all variables in mpe_set
         for variable in mpe_set:
             self.maxing_out(variable)
+        highest = 0
+        highest_cpt = None
+        for variable in self.bn.get_all_variables():
+            cpt = self.bn.get_cpt(variable)
+            p = cpt.loc[:, 'p'].tolist()[0]
 
+            if p > highest:
+                highest = p
+                highest_cpt = cpt
+        return self.cpt_to_dict(highest_cpt)
+
+    def cpt_to_dict(self,cpt):
+        dict_cpt = dict()
+        p_value = cpt.loc[:, 'p'].tolist()[0]
+        variables = cpt.loc[:, 'extended_factors'].tolist()[0]
+        variables = variables.split(',')
+        for column in cpt.columns:
+            if column not in ('p', 'extended_factors'):
+                dict_cpt[column] = cpt.loc[:, column].tolist()[0]
+        for pair in variables:
+            pair = pair.split('= ')
+            var, value = pair
+            dict_cpt[var] = value
+        print(dict_cpt)
+
+        return dict_cpt
 
 if __name__ == "__main__":
     # Hardcoded voorbeeld om stuk te testen
@@ -148,4 +173,4 @@ if __name__ == "__main__":
     # chekc = BN.independence(["Slippery Road?"], ["Sprinkler?"], ["Winter?", "Rain?"])
     # print(chekc)
     # BN.bn.draw_structure()
-    BN.most_probable_explaination({'Rain?':True, 'Winter?':False})
+    print('highest=',BN.most_probable_explaination({'Rain?':True, 'Winter?':False}))
