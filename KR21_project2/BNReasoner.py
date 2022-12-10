@@ -1,10 +1,10 @@
 import os
-# OpenMP problem fix. Remove if it causes problems.
-os.environ['KMP_DUPLICATE_LIB_OK']='True'
-
 from typing import Union
 from BayesNet import BayesNet
 import networkx as nx
+
+# OpenMP problem fix. Remove if it causes problems.
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
 class BNReasoner:
@@ -27,10 +27,10 @@ class BNReasoner:
         """
         # Remove rows from cpt which do not agree with the evidence of the variable
         for current_var in self.bn.get_all_variables():
-            CPT = self.bn.get_cpt(current_var)
-            if variable in CPT:
-                CPT = CPT[CPT[variable] == evidence]
-            self.bn.update_cpt(current_var, CPT)
+            cpt = self.bn.get_cpt(current_var)
+            if variable in cpt:
+                cpt = cpt[cpt[variable] == evidence]
+            self.bn.update_cpt(current_var, cpt)
 
         # Remove all edges which have the selected variable as first node (directed)
         remove_set = set()
@@ -61,14 +61,17 @@ class BNReasoner:
         for current_var in self.bn.get_all_variables():
             if variable in self.bn.get_cpt(current_var).columns:
                 df_new = self.bn.get_cpt(current_var).sort_values('p', ascending=False)
-                df_new = df_new.drop_duplicates(subset=self.bn.get_cpt(current_var).columns.difference([variable, 'p'])).sort_index()
+                df_new = df_new.drop_duplicates(
+                    subset=self.bn.get_cpt(current_var).columns.difference(
+                        [variable, 'p'])).sort_index()
                 new_extended_factor = variable + '= ' + str(df_new.loc[:, variable].tolist()[0])
                 if 'extended_factors' in df_new.columns:
-                    df_new['extended_factors'] = df_new['extended_factors'] + ',' + new_extended_factor
+                    df_new['extended_factors'] = \
+                        df_new['extended_factors'] + ',' + new_extended_factor
                 else:
                     df_new['extended_factors'] = new_extended_factor
                 # df_new['extended_factors'].append(new_extended_factor)
-                df_new = df_new.drop(labels=variable ,axis='columns')
+                df_new = df_new.drop(labels=variable, axis='columns')
                 self.bn.update_cpt(current_var, df_new)
                 print(self.bn.get_cpt(current_var))
                 print('\n')
@@ -79,18 +82,18 @@ class BNReasoner:
         this means we have no d-separation so we return False.
         If there is no such a path, return True.
         """
-        visited = [] # The nodes that have been visited
-        search_nodes = [start] # Nodes to find paths from.
+        visited = []  # The nodes that have been visited
+        search_nodes = [start]  # Nodes to find paths from.
         while len(search_nodes) > 0:
-                node = search_nodes.pop()
-                if node == end:
-                    return False
+            node = search_nodes.pop()
+            if node == end:
+                return False
 
-                if node not in visited:
-                    visited.append(node)
-                    neighbors = list(nx.all_neighbors(reasoner.bn.structure, node))
-                    for neighbor in neighbors:
-                        search_nodes.append(neighbor)
+            if node not in visited:
+                visited.append(node)
+                neighbors = list(nx.all_neighbors(reasoner.bn.structure, node))
+                for neighbor in neighbors:
+                    search_nodes.append(neighbor)
         return True
 
     def d_separation(self, X, Y, Z):
@@ -128,9 +131,9 @@ class BNReasoner:
         """
         pass
 
-    def most_probable_explaination(self, evidence_dict):
+    def most_probable_explanation(self, evidence_dict):
         """
-        :param evidence_set:
+        :param evidence_dict:
         """
         evidence_set = evidence_dict.keys()
         variable_set = set(self.bn.get_all_variables())
@@ -149,9 +152,14 @@ class BNReasoner:
             if p > highest:
                 highest = p
                 highest_cpt = cpt
-        return self.cpt_to_dict(highest_cpt)
+        return self.cpt_to_dict(highest_cpt), 'p='+str(highest)
 
-    def cpt_to_dict(self,cpt):
+    @staticmethod
+    def cpt_to_dict(cpt):
+        """
+        :param cpt: 
+        :return: 
+        """
         dict_cpt = dict()
         p_value = cpt.loc[:, 'p'].tolist()[0]
         variables = cpt.loc[:, 'extended_factors'].tolist()[0]
@@ -163,14 +171,13 @@ class BNReasoner:
             pair = pair.split('= ')
             var, value = pair
             dict_cpt[var] = value
-        print(dict_cpt)
-
         return dict_cpt
+
 
 if __name__ == "__main__":
     # Hardcoded voorbeeld om stuk te testen
     BN = BNReasoner('testing/lecture_example.BIFXML')
-    # chekc = BN.independence(["Slippery Road?"], ["Sprinkler?"], ["Winter?", "Rain?"])
-    # print(chekc)
+    # check = BN.independence(["Slippery Road?"], ["Sprinkler?"], ["Winter?", "Rain?"])
+    # print(check)
     # BN.bn.draw_structure()
-    print('highest=',BN.most_probable_explaination({'Rain?':True, 'Winter?':False}))
+    print('highest=', BN.most_probable_explanation({'Rain?': True, 'Winter?': False}))
