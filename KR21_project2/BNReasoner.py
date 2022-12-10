@@ -59,13 +59,19 @@ class BNReasoner:
         # A new Dataframe is made per CPT in which the rows are sorted on score and the duplicates
         # with the lowest score are removed. The self.bn is then updated using the new dataframe.
         for current_var in self.bn.get_all_variables():
-            if variable in self.bn.get_cpt(current_var):
+            if variable in self.bn.get_cpt(current_var).columns:
                 df_new = self.bn.get_cpt(current_var).sort_values('p', ascending=False)
                 df_new = df_new.drop_duplicates(subset=self.bn.get_cpt(current_var).columns.difference([variable, 'p'])).sort_index()
-                df_new['extended_factors'] = df_new.loc[:, variable]
+                new_extended_factor = variable + '= ' + str(df_new.loc[:, variable].tolist()[0])
+                if 'extended_factors' in df_new.columns:
+                    df_new['extended_factors'] = df_new['extended_factors'] + ',' + new_extended_factor
+                else:
+                    df_new['extended_factors'] = new_extended_factor
+                # df_new['extended_factors'].append(new_extended_factor)
                 df_new = df_new.drop(labels=variable ,axis='columns')
                 self.bn.update_cpt(current_var, df_new)
                 print(self.bn.get_cpt(current_var))
+                print('\n')
 
     def find_path(self, reasoner, start, end):
         """
@@ -122,9 +128,49 @@ class BNReasoner:
         """
         pass
 
+    def most_probable_explaination(self, evidence_dict):
+        """
+        :param evidence_set:
+        """
+        evidence_set = evidence_dict.keys()
+        variable_set = set(self.bn.get_all_variables())
+        mpe_set = variable_set.difference(evidence_set)
+        for variable, evidence in evidence_dict.items():
+            self.network_pruning(variable, evidence)
+        # maximize-out all variables in mpe_set
+        for variable in mpe_set:
+            self.maxing_out(variable)
+        highest = 0
+        highest_cpt = None
+        for variable in self.bn.get_all_variables():
+            cpt = self.bn.get_cpt(variable)
+            p = cpt.loc[:, 'p'].tolist()[0]
+
+            if p > highest:
+                highest = p
+                highest_cpt = cpt
+        return self.cpt_to_dict(highest_cpt)
+
+    def cpt_to_dict(self,cpt):
+        dict_cpt = dict()
+        p_value = cpt.loc[:, 'p'].tolist()[0]
+        variables = cpt.loc[:, 'extended_factors'].tolist()[0]
+        variables = variables.split(',')
+        for column in cpt.columns:
+            if column not in ('p', 'extended_factors'):
+                dict_cpt[column] = cpt.loc[:, column].tolist()[0]
+        for pair in variables:
+            pair = pair.split('= ')
+            var, value = pair
+            dict_cpt[var] = value
+        print(dict_cpt)
+
+        return dict_cpt
+
 if __name__ == "__main__":
     # Hardcoded voorbeeld om stuk te testen
     BN = BNReasoner('testing/lecture_example.BIFXML')
-    chekc = BN.independence(["Slippery Road?"], ["Sprinkler?"], ["Winter?", "Rain?"])
-    print(chekc)
+    # chekc = BN.independence(["Slippery Road?"], ["Sprinkler?"], ["Winter?", "Rain?"])
+    # print(chekc)
     # BN.bn.draw_structure()
+    print('highest=',BN.most_probable_explaination({'Rain?':True, 'Winter?':False}))
