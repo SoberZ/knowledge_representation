@@ -179,5 +179,11 @@ if __name__ == "__main__":
     BN = BNReasoner('testing/lecture_example.BIFXML')
     # check = BN.independence(["Slippery Road?"], ["Sprinkler?"], ["Winter?", "Rain?"])
     # print(check)
+    for variable in BN.bn.get_all_variables():
+        print(BN.bn.get_cpt(variable))
+    print('\n\n')
+    BN.network_pruning('Rain?', False)
     # BN.bn.draw_structure()
-    print('highest=', BN.most_probable_explanation({'Rain?': True, 'Winter?': False}))
+    for variable in BN.bn.get_all_variables():
+        print(BN.bn.get_cpt(variable))
+    # print('highest=', BN.most_probable_explanation({'Rain?': True, 'Winter?': False}))
