@@ -315,8 +315,12 @@ if __name__ == "__main__":
     BN4.variable_elimination("family-out")
 
     # check = BN.independence(["Slippery Road?"], ["Sprinkler?"], ["Winter?", "Rain?"])
-    # print('highest=', BN1.most_probable_explanation({'Rain?': True, 'Winter?': False}))
-
-    # Depth-first search vs Breadth first search
-    # Well connected graph vs badly connected
-    # Unpruned vs pruned
+    # print(check)
+    for variable in BN.bn.get_all_variables():
+        print(BN.bn.get_cpt(variable))
+    print('\n\n')
+    BN.network_pruning('Rain?', False)
+    # BN.bn.draw_structure()
+    for variable in BN.bn.get_all_variables():
+        print(BN.bn.get_cpt(variable))
+    # print('highest=', BN.most_probable_explanation({'Rain?': True, 'Winter?': False}))
