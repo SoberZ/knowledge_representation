@@ -192,13 +192,14 @@ class BNReasoner:
                 cit2 = self.bn.get_compatible_instantiations_table(p2_series, fac_g)
                 new_ps.append(list(cit1.p)[0] * list(cit2.p)[0])
 
-            transposed_worlds = map(list, zip(*worlds))
-            print(transposed_worlds)
-            # pd.DataFrame()
-            # return
+            transposed_worlds = [*zip(*worlds)]
+            new_df = {}
+            for i, column in enumerate(list(fac_f.columns[:-1]) + list(fac_g.columns[:-1])):
+                new_df[column] = transposed_worlds[i]
+            new_df["p"] = new_ps
+            return pd.DataFrame(new_df)
 
         merged = pd.merge(fac_f, fac_g, on=common_vars[0], how='outer')
-
         for i in range(len(merged.index)):
             merged.at[i, 'p'] = merged.at[i, 'p_x'] * merged.at[i, 'p_y']
 
@@ -211,22 +212,31 @@ class BNReasoner:
         """
         Sum out a set of variables by using variable elimination.
         """
-        partial_factors = []
+        # Get all cpts
+        cpt_dict = self.bn.get_all_cpts()
+        print(cpt_dict)
+        partial_factors = None
+
         for variable in variables:
             # Step 1. Join all factors containing that variable
-            cpt_dict = self.bn.get_all_cpts()
             cpts = []
+            if partial_factors is not None:
+                cpts.append(partial_factors)
+
+            partial_factors = None
+            new_dict = {}
             for cpt in cpt_dict:
                 if variable in cpt_dict[cpt].columns:
-                    cpts.append(self.bn.get_cpt(cpt))
-
+                    cpts.append(cpt_dict[cpt])
+                else:
+                    new_dict[cpt] = cpt_dict[cpt]
+            cpt_dict = new_dict
             joined_factors = reduce(lambda x, y: self.factor_multiplication(x, y), cpts)
 
             # Step 2. Sum out the influence of the variable on new factor
-            summed_out_factor = self.marginalization(joined_factors, variable)
-            partial_factors.append(summed_out_factor)
+            partial_factors = self.marginalization(joined_factors, variable)
 
-        return reduce(lambda x, y: self.factor_multiplication(x, y), partial_factors)
+        return partial_factors
 
     def most_probable_explanation(self, evidence_dict):
         """
@@ -333,7 +343,7 @@ if __name__ == "__main__":
     # BN3 = BNReasoner('testing/lecture_example2.BIFXML')
     BN4 = BNReasoner('testing/dog_problem.BIFXML')
 
-    var_elim = BN4.variable_elimination(["family-out", "light-on"])
+    var_elim = BN4.variable_elimination(["light-on", "family-out"])
     print(var_elim)
 
     # check = BN.independence(["Slippery Road?"], ["Sprinkler?"], ["Winter?", "Rain?"])
