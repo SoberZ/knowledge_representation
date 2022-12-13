@@ -39,6 +39,7 @@ class BNReasoner:
                 remove_set.add((node_1, node_2))
         for node_tuple in remove_set:
             self.bn.del_edge((node_tuple[0], node_tuple[1]))
+        return self
 
     def marginalization(self, factor, variable):
         """
