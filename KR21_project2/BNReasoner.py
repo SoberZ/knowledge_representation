@@ -43,18 +43,17 @@ class BNReasoner:
             self.bn.del_edge((node_tuple[0], node_tuple[1]))
 
 
-    def marginalization(self, variable):
+    def marginalization(self, factor, variable):
         """
+        :param factor: The factor for which cpt you want to marginalize
         :param variable: The variable which you want to marginalize (sum-out)
         """
-        for current_var in self.bn.get_all_variables():
-            if variable in self.bn.get_cpt(current_var):
-                group_cols = self.bn.get_cpt(current_var).columns.tolist()
-                group_cols.remove(variable)
-                group_cols.remove('p')
-                df2 = self.bn.get_cpt(current_var).groupby(
-                    group_cols, as_index=False)['p'].sum()
-                self.bn.update_cpt(current_var, df2)
+        if variable in self.bn.get_cpt(factor):
+            group_cols = self.bn.get_cpt(factor).columns.tolist()
+            group_cols.remove(variable)
+            group_cols.remove('p')
+            df2 = self.bn.get_cpt(factor).groupby(group_cols, as_index=False)['p'].sum()
+            self.bn.update_cpt(factor, df2)
 
 
     def maxing_out(self, variable):
