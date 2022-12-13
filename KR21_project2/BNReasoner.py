@@ -6,6 +6,8 @@ from typing import Union
 from BayesNet import BayesNet
 import pandas as pd
 import networkx as nx
+from functools import reduce
+import itertools
 
 
 class BNReasoner:
@@ -41,19 +43,21 @@ class BNReasoner:
                 remove_set.add((node_1, node_2))
         for node_tuple in remove_set:
             self.bn.del_edge((node_tuple[0], node_tuple[1]))
+        return self
 
 
-    def marginalization(self, factor, variable):
+    def marginalization(self, factor: pd.DataFrame, variable: str):
         """
-        :param factor: The factor for which cpt you want to marginalize
+        :param factor: The factor dataframe for which cpt you want to marginalize
         :param variable: The variable which you want to marginalize (sum-out)
         """
-        if variable in self.bn.get_cpt(factor):
-            group_cols = self.bn.get_cpt(factor).columns.tolist()
+        if variable in factor:
+            group_cols = factor.columns.tolist()
             group_cols.remove(variable)
             group_cols.remove('p')
-            df2 = self.bn.get_cpt(factor).groupby(group_cols, as_index=False)['p'].sum()
-            self.bn.update_cpt(factor, df2)
+            df2 = factor.groupby(group_cols, as_index=False)['p'].sum()
+            return df2
+        return False
 
 
     def maxing_out(self, variable):
@@ -167,16 +171,33 @@ class BNReasoner:
         return False
 
 
-    def factor_multiplication(self, fac_f, fac_g):
+    def factor_multiplication(self, fac_f: pd.DataFrame, fac_g: pd.DataFrame) -> pd.DataFrame:
         """
         Given two factors f and g, compute the multiplied factor h=fg
         :param fac_f, fac_g: The factors you want to multiply.
         """
-        f_cpt = self.bn.get_cpt(fac_f)
-        g_cpt = self.bn.get_cpt(fac_g)
-        common_vars = [i for i in f_cpt.columns if i in g_cpt.columns]
+        common_vars = [i for i in fac_f.columns if i in fac_g.columns]
 
-        merged = pd.merge(f_cpt, g_cpt, on=common_vars[0], how='outer')
+        if common_vars[0] == "p":
+            f_len = len(fac_f.columns) - 1
+            g_len = len(fac_g.columns) - 1
+            n_vars = f_len + g_len
+            worlds = [list(i) for i in itertools.product([False, True], repeat=n_vars)]
+            new_ps = []
+            for world in worlds:
+                part1, part2 = world[0:f_len], world[f_len:]
+                p1_series = pd.Series(dict(zip(fac_f.columns, part1)))
+                p2_series = pd.Series(dict(zip(fac_g.columns, part2)))
+                cit1 = self.bn.get_compatible_instantiations_table(p1_series, fac_f)
+                cit2 = self.bn.get_compatible_instantiations_table(p2_series, fac_g)
+                new_ps.append(list(cit1.p)[0] * list(cit2.p)[0])
+
+            transposed_worlds = map(list, zip(*worlds))
+            print(transposed_worlds)
+            # pd.DataFrame()
+            # return
+
+        merged = pd.merge(fac_f, fac_g, on=common_vars[0], how='outer')
 
         for i in range(len(merged.index)):
             merged.at[i, 'p'] = merged.at[i, 'p_x'] * merged.at[i, 'p_y']
@@ -186,25 +207,26 @@ class BNReasoner:
         return merged
 
 
-    def variable_elimination(self, variables):
+    def variable_elimination(self, variables: list):
         """
         Sum out a set of variables by using variable elimination.
         """
+        partial_factors = []
         for variable in variables:
-            # cpt = self.bn.get_cpt(variable)
-            # a = self.bn.get_compatible_instantiations_table(pd.Series({"Winter?": True}), cpt)
-            # b = self.bn.reduce_factor(pd.Series({"Winter?": True}), cpt)
-
             # Step 1. Join all factors containing that variable
-            new_cpt = None
             cpt_dict = self.bn.get_all_cpts()
             cpts = []
             for cpt in cpt_dict:
                 if variable in cpt_dict[cpt].columns:
-                    cpts.append(cpt_dict[cpt])
-            print(cpts)
+                    cpts.append(self.bn.get_cpt(cpt))
+
+            joined_factors = reduce(lambda x, y: self.factor_multiplication(x, y), cpts)
 
             # Step 2. Sum out the influence of the variable on new factor
+            summed_out_factor = self.marginalization(joined_factors, variable)
+            partial_factors.append(summed_out_factor)
+
+        return reduce(lambda x, y: self.factor_multiplication(x, y), partial_factors)
 
     def most_probable_explanation(self, evidence_dict):
         """
@@ -311,15 +333,16 @@ if __name__ == "__main__":
     # BN3 = BNReasoner('testing/lecture_example2.BIFXML')
     BN4 = BNReasoner('testing/dog_problem.BIFXML')
 
-    BN4.variable_elimination("family-out")
+    var_elim = BN4.variable_elimination(["family-out", "light-on"])
+    print(var_elim)
 
     # check = BN.independence(["Slippery Road?"], ["Sprinkler?"], ["Winter?", "Rain?"])
-    # print(check)
-    for variable in BN.bn.get_all_variables():
-        print(BN.bn.get_cpt(variable))
-    print('\n\n')
-    BN.network_pruning('Rain?', False)
+
+    # for variable in BN.bn.get_all_variables():
+    #     print(BN.bn.get_cpt(variable))
+    # print('\n\n')
+    # BN.network_pruning('Rain?', False)
     # BN.bn.draw_structure()
-    for variable in BN.bn.get_all_variables():
-        print(BN.bn.get_cpt(variable))
+    # for variable in BN.bn.get_all_variables():
+    #     print(BN.bn.get_cpt(variable))
     # print('highest=', BN.most_probable_explanation({'Rain?': True, 'Winter?': False}))
