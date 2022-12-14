@@ -45,8 +45,8 @@ class BNReasoner:
             self.bn.del_edge((node_tuple[0], node_tuple[1]))
         return self
 
-
-    def marginalization(self, factor: pd.DataFrame, variable: str):
+    @staticmethod
+    def marginalization(factor: pd.DataFrame, variable: str):
         """
         :param factor: The factor dataframe for which cpt you want to marginalize
         :param variable: The variable which you want to marginalize (sum-out)
@@ -83,8 +83,7 @@ class BNReasoner:
                 # df_new['extended_factors'].append(new_extended_factor)
                 df_new = df_new.drop(labels=variable, axis='columns')
                 self.bn.update_cpt(current_var, df_new)
-                print(self.bn.get_cpt(current_var))
-                print('\n')
+        return self
 
 
     def find_path_DFS(self, reasoner, start, end):
@@ -245,7 +244,6 @@ class BNReasoner:
         for variable in self.bn.get_all_variables():
             cpt = self.bn.get_cpt(variable)
             p = cpt.loc[:, 'p'].tolist()[0]
-
             if p > highest:
                 highest = p
                 highest_cpt = cpt
@@ -268,6 +266,8 @@ class BNReasoner:
             pair = pair.split('= ')
             var, value = pair
             dict_cpt[var] = value
+        for keys in dict_cpt:
+            dict_cpt[keys] = str(dict_cpt[keys])
         return dict_cpt
 
     def new_edge_counter(self, int_graph):
@@ -323,18 +323,18 @@ class BNReasoner:
         else:
             print("ERROR: please choose between min-degree or min-fill.")
 
-        return order
+        return order[:len(self.bn.get_all_variables())]
 
 
 if __name__ == "__main__":
     # Hardcoded voorbeeld om stuk te testen
     # BN1 = BNReasoner('testing/test.BIFXML')
-    # BN2 = BNReasoner('testing/lecture_example.BIFXML')
-    # BN3 = BNReasoner('testing/lecture_example2.BIFXML')
-    BN4 = BNReasoner('testing/dog_problem.BIFXML')
-
-    var_elim = BN4.variable_elimination(["family-out", "light-on"])
-    print(var_elim)
+    BN2 = BNReasoner('testing/lecture_example.BIFXML')
+    BN3 = BNReasoner('testing/lecture_example2.BIFXML')
+    # BN4 = BNReasoner('testing/dog_problem.BIFXML')
+    #
+    # var_elim = BN4.variable_elimination(["family-out", "light-on"])
+    # print(var_elim)
 
     # check = BN.independence(["Slippery Road?"], ["Sprinkler?"], ["Winter?", "Rain?"])
 
@@ -343,6 +343,7 @@ if __name__ == "__main__":
     # print('\n\n')
     # BN.network_pruning('Rain?', False)
     # BN.bn.draw_structure()
-    # for variable in BN.bn.get_all_variables():
-    #     print(BN.bn.get_cpt(variable))
-    # print('highest=', BN.most_probable_explanation({'Rain?': True, 'Winter?': False}))
+    # for variable in BN3.bn.get_all_variables():
+    #     print(BN3.bn.get_cpt(variable))
+    BN2.bn.draw_structure()
+    # print('highest=', BN2.most_probable_explanation({'Rain?': True, 'Sprinkler?': False}))
