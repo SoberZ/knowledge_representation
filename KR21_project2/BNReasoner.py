@@ -23,7 +23,6 @@ class BNReasoner:
         else:
             self.bn = net
 
-
     def network_pruning(self, variable, evidence):
         """
         :param variable: Variable which has known evidence to prune network with
@@ -59,7 +58,6 @@ class BNReasoner:
             return df2
         return False
 
-
     def maxing_out(self, variable):
         """
         :param variable: The variable which you want to max-out on
@@ -89,7 +87,6 @@ class BNReasoner:
                 self.bn.update_cpt(current_var, df_new)
         return self
 
-
     def find_path_DFS(self, reasoner, start, end):
         """
         Find a path between two nodes using DFS.
@@ -110,7 +107,6 @@ class BNReasoner:
                 for neighbor in neighbors:
                     search_nodes.append(neighbor)
         return True
-
 
     def find_path_BFS(self, reasoner, start, end):
         """
@@ -134,7 +130,6 @@ class BNReasoner:
 
         return True
 
-
     def d_separation(self, X, Y, Z):
         """
         X, Y - Sets of Nodes to check for d-separation
@@ -156,7 +151,6 @@ class BNReasoner:
                     res = res and self.find_path_BFS(reasoner_copy, start, end)
         return res
 
-
     def independence(self, X, Y, Z):
         """
         Given three sets of variables X, Y, and Z,
@@ -172,7 +166,6 @@ class BNReasoner:
             return True
 
         return False
-
 
     def factor_multiplication(self, fac_f: pd.DataFrame, fac_g: pd.DataFrame) -> pd.DataFrame:
         """
@@ -210,14 +203,12 @@ class BNReasoner:
 
         return merged
 
-
     def variable_elimination(self, variables: list):
         """
         Sum out a set of variables by using variable elimination.
         """
         # Get all cpts
         cpt_dict = self.bn.get_all_cpts()
-        print(cpt_dict)
         partial_factors = None
 
         for variable in variables:
@@ -345,24 +336,22 @@ class BNReasoner:
 if __name__ == "__main__":
     # Hardcoded voorbeeld om stuk te testen
     # BN1 = BNReasoner('testing/test.BIFXML')
-    BN2 = BNReasoner('testing/lecture_example.BIFXML')
+    # BN2 = BNReasoner('testing/lecture_example.BIFXML')
     # BN3 = BNReasoner('testing/lecture_example2.BIFXML')
-    # BN4 = BNReasoner('testing/dog_problem.BIFXML')
-    #
-    # var_elim = BN4.variable_elimination(["family-out", "light-on"])
-    # print(var_elim)
+    BN4 = BNReasoner('testing/dog_problem.BIFXML')
+    print(BN4.bn.get_all_cpts())
+    print('\n\n')
+    var_elim = BN4.variable_elimination(["family-out", "dog-out", "light-on"])
+    print(var_elim)
     # check = BN.independence(["Slippery Road?"], ["Sprinkler?"], ["Winter?", "Rain?"])
-
-    for variable in BN2.bn.get_all_variables():
-        print(BN2.bn.get_cpt(variable))
-    print('\n')
+    # for variable in BN2.bn.get_all_variables():
+    #     print(BN2.bn.get_cpt(variable))
+    # print('\n')
     # print(BN2.most_probable_explanation({'Rain?': True, 'Winter?': False}))
-
-
     # print('\n\n')
     # BN.network_pruning('Rain?', False)
     # BN.bn.draw_structure()
     # for variable in BN3.bn.get_all_variables():
     #     print(BN3.bn.get_cpt(variable))
     # BN2.bn.draw_structure()
-    print(BN2.most_probable_explanation({'Rain?': True, 'Winter?': False}))
+    # print(BN2.most_probable_explanation({'Rain?': True, 'Winter?': False}))

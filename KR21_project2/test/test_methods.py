@@ -4,7 +4,6 @@ import pandas as pd
 import BNReasoner as BNR
 
 
-
 class MyTestCase(unittest.TestCase):
     def test_network_pruning(self):
         # Setup answer in dataframe to test the method with
@@ -58,10 +57,32 @@ class MyTestCase(unittest.TestCase):
     #     self.assertEqual(response2, True)
 
     def test_factor_multiplication(self):
-        pass
+        # Initialising example and running method
+        BN = BNR.BNReasoner('testing/lecture_example.BIFXML')
+        df1 = BN.bn.get_cpt('Rain?')
+        df2 = BN.bn.get_cpt('Slippery Road?')
+        outcome = BN.factor_multiplication(df1,df2)
+        # Expected DataFrame
+        answer_Data = {'Winter?': [False, False, True, True, False, False, True, True], 'Rain?':
+            [False, False, False, False, True, True, True, True], 'Slippery Road?':
+            [False, True, False, True, False, True, False, True], 'p':
+            [0.90, 0.00, 0.20, 0.00, 0.03, 0.07, 0.24, 0.56]}
+        expected = pd.DataFrame(data=answer_Data)
+
+        for i, j in zip(expected.iterrows(), outcome.iterrows()):
+            self.assertEqual(str(i[1].to_string()), str(j[1].to_string()))
 
     def test_variable_elimination(self):
-        pass
+        # initiate dataframe and use method for its outcome
+        BN = BNR.BNReasoner('testing/dog_problem.BIFXML')
+        outcome = BN.variable_elimination(["family-out", "dog-out", "light-on"])
+        # setup correct answer in dataframe
+        answer_Data = {'bowel-problem': [False, False, True, True],'hear-bark':
+            [False, True, False, True], 'p': [0.640315, 0.359685, 0.286345, 0.713655]}
+        expected = pd.DataFrame(data=answer_Data)
+        # check for each row if the outcome equals the expected outcome
+        for i, j in zip(expected.iterrows(), outcome.iterrows()):
+            self.assertEqual(str(i[1].to_string()), str(j[1].to_string()))
 
     def test_most_probable_explanation(self):
         # Load lecture example
