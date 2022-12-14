@@ -68,18 +68,22 @@ class BNReasoner:
         # with the lowest score are removed. The self.bn is then updated using the new dataframe.
         for current_var in self.bn.get_all_variables():
             if variable in self.bn.get_cpt(current_var).columns:
+                new_list = []
+                newer_list = []
                 df_new = self.bn.get_cpt(
                     current_var).sort_values('p', ascending=False)
                 df_new = df_new.drop_duplicates(
                     subset=self.bn.get_cpt(current_var).columns.difference(
                         [variable, 'p'])).sort_index()
-                new_extended_factor = variable + '= ' + \
-                    str(df_new.loc[:, variable].tolist()[0])
+                for item in df_new.loc[:, variable].tolist():
+                    new_list.append(variable + '= ' + str(item))
                 if 'extended_factors' in df_new.columns:
-                    df_new['extended_factors'] = \
-                        df_new['extended_factors'] + ',' + new_extended_factor
+                    for i, item in enumerate(df_new['extended_factors']):
+                        newer_list.append(item + ',' + new_list[i])
+                    df_new['extended_factors'] = newer_list
+
                 else:
-                    df_new['extended_factors'] = new_extended_factor
+                    df_new['extended_factors'] = new_list
                 # df_new['extended_factors'].append(new_extended_factor)
                 df_new = df_new.drop(labels=variable, axis='columns')
                 self.bn.update_cpt(current_var, df_new)
@@ -253,14 +257,15 @@ class BNReasoner:
         highest_cpt = None
         for variable in self.bn.get_all_variables():
             cpt = self.bn.get_cpt(variable)
-            p = cpt.loc[:, 'p'].tolist()[0]
-            if p > highest:
-                highest = p
-                highest_cpt = cpt
-        return self.cpt_to_dict(highest_cpt), 'p='+str(highest)
+            p = cpt.loc[:, 'p'].tolist()
+            for item in p:
+                if item > highest:
+                    highest = item
+                    highest_cpt = cpt
+        return self.cpt_to_dict(highest_cpt, evidence_dict), 'p='+str(highest)
 
     @staticmethod
-    def cpt_to_dict(cpt):
+    def cpt_to_dict(cpt, evidence_dict):
         """
         :param cpt:
         :return:
@@ -272,12 +277,15 @@ class BNReasoner:
         for column in cpt.columns:
             if column not in ('p', 'extended_factors'):
                 dict_cpt[column] = cpt.loc[:, column].tolist()[0]
+
         for pair in variables:
             pair = pair.split('= ')
             var, value = pair
             dict_cpt[var] = value
         for keys in dict_cpt:
             dict_cpt[keys] = str(dict_cpt[keys])
+        for item,item_value in evidence_dict.items():
+            dict_cpt[item] = item_value
         return dict_cpt
 
     def new_edge_counter(self, int_graph):
@@ -340,19 +348,23 @@ if __name__ == "__main__":
     # Hardcoded voorbeeld om stuk te testen
     # BN1 = BNReasoner('testing/test.BIFXML')
     BN2 = BNReasoner('testing/lecture_example.BIFXML')
-    BN3 = BNReasoner('testing/lecture_example2.BIFXML')
+    # BN3 = BNReasoner('testing/lecture_example2.BIFXML')
     # BN4 = BNReasoner('testing/dog_problem.BIFXML')
     #
     # var_elim = BN4.variable_elimination(["family-out", "light-on"])
     # print(var_elim)
     # check = BN.independence(["Slippery Road?"], ["Sprinkler?"], ["Winter?", "Rain?"])
 
-    # for variable in BN.bn.get_all_variables():
-    #     print(BN.bn.get_cpt(variable))
+    for variable in BN2.bn.get_all_variables():
+        print(BN2.bn.get_cpt(variable))
+    print('\n')
+    # print(BN2.most_probable_explanation({'Rain?': True, 'Winter?': False}))
+
+
     # print('\n\n')
     # BN.network_pruning('Rain?', False)
     # BN.bn.draw_structure()
     # for variable in BN3.bn.get_all_variables():
     #     print(BN3.bn.get_cpt(variable))
-    BN2.bn.draw_structure()
-    # print('highest=', BN2.most_probable_explanation({'Rain?': True, 'Sprinkler?': False}))
+    # BN2.bn.draw_structure()
+    print(BN2.most_probable_explanation({'Rain?': True, 'Winter?': False}))
