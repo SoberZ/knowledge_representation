@@ -318,7 +318,7 @@ class BNReasoner:
                             interaction_graph.add_edge(variable1, variable2)
                 interaction_graph.remove_node(min_edges[0])
 
-        if heuristic == "min-fill":
+        elif heuristic == "min-fill":
             interaction_graph = self.bn.get_interaction_graph()
             while interaction_graph.number_of_nodes() > 0:
                 min_edges = min(self.new_edge_counter(interaction_graph),
