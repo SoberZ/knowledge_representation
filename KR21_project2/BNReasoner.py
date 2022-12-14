@@ -262,26 +262,24 @@ class BNReasoner:
                 if item > highest:
                     highest = item
                     highest_cpt = cpt
-        return self.cpt_to_dict(highest_cpt, evidence_dict), 'p='+str(highest)
+        return self.cpt_to_dict(highest_cpt, evidence_dict, highest), 'p='+str(highest)
 
     @staticmethod
-    def cpt_to_dict(cpt, evidence_dict):
+    def cpt_to_dict(cpt, evidence_dict, highest):
         """
         :param cpt:
         :return:
         """
         dict_cpt = dict()
-        p_value = cpt.loc[:, 'p'].tolist()[0]
-        variables = cpt.loc[:, 'extended_factors'].tolist()[0]
-        variables = variables.split(',')
+        variables = cpt.loc[:, 'extended_factors'][[cpt.index[cpt['p'] == highest][0]]].tolist()
         for column in cpt.columns:
             if column not in ('p', 'extended_factors'):
                 dict_cpt[column] = cpt.loc[:, column].tolist()[0]
-
-        for pair in variables:
-            pair = pair.split('= ')
-            var, value = pair
-            dict_cpt[var] = value
+        for item in variables:
+            item = item.split(',')
+            for it in item:
+                var, value = it.split('= ')
+                dict_cpt[var] = value
         for keys in dict_cpt:
             dict_cpt[keys] = str(dict_cpt[keys])
         for item,item_value in evidence_dict.items():
