@@ -402,6 +402,36 @@ class BNReasoner:
             print("ERROR: please choose between min-degree or min-fill.")
 
         return order[:len(self.bn.get_all_variables())]
+    
+
+
+    def get_path(self, start, end):
+        """
+        :param start: variable to start the path from
+        :param end: variable to end the path
+        :return: a list of the path from the start to end variable
+        """
+        network = self.bn.structure
+
+        if nx.has_path(network, source=start, target=end):
+            return nx.shortest_path(network, source=start, target=end)
+        
+
+    def marginal_distribution(self, query_variables: list, variable, evidence):
+        """
+        :param query_variables: The query variable against which you want to test the evidence
+        :param variable: The variable for which you have evidence
+        :param evidence: Assignment of the variable: True/False
+        """
+        eliminate_vars = []
+        for j in query_variables:
+            for i in self.get_path(variable, j):
+                if i not in query_variables and i != variable and i not in eliminate_vars:
+                    eliminate_vars.append(i)
+
+        new_network = self.network_pruning(variable, evidence)
+        new_table = new_network.variable_elimination(eliminate_vars)
+        return new_table
 
 
 if __name__ == "__main__":
