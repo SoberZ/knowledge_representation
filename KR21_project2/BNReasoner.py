@@ -24,7 +24,6 @@ class BNReasoner:
         else:
             self.bn = net
 
-
     def network_pruning(self, variable, evidence):
         """
         :param variable: Variable which has known evidence to prune network with
@@ -60,7 +59,6 @@ class BNReasoner:
             return df2
         return False
 
-
     def maxing_out(self, factor: pd.DataFrame, variable: str):
         """
         A new Dataframe is made per CPT in which the rows are sorted on score and the duplicates
@@ -68,65 +66,31 @@ class BNReasoner:
 
         :param variable: The variable which you want to max-out on
         """
+
+        # A new Dataframe is made per CPT in which the rows are sorted on score and the duplicates
+        # with the lowest score are removed. The self.bn is then updated using the new dataframe.
+
         # There is only one column to maximize over.
         if len(factor.columns) == 2 and factor.columns[0] == variable:
             return factor
 
+        new_list = []
+        newer_list = []
         df_new = factor.sort_values('p', ascending=False)
-        df_new = df_new.drop_duplicates(subset=factor.columns.difference([variable, 'p'])).sort_index()
-        new_extended_factor = variable + '=' + str(df_new.loc[:, variable].tolist()[0])
+        df_new = df_new.drop_duplicates(
+            subset=factor.columns.difference(
+                [variable, 'p'])).sort_index()
+        for item in df_new.loc[:, variable].tolist():
+            new_list.append(variable + '= ' + str(item))
         if 'extended_factors' in df_new.columns:
-            df_new['extended_factors'] = \
-                df_new['extended_factors'] + ',' + new_extended_factor
+            for i, item in enumerate(df_new['extended_factors']):
+                newer_list.append(item + ',' + new_list[i])
+            df_new['extended_factors'] = newer_list
         else:
-            df_new['extended_factors'] = new_extended_factor
+            df_new['extended_factors'] = new_list
         df_new = df_new.drop(labels=variable, axis='columns')
+        self.bn.update_cpt(variable, df_new)
         return df_new
-
-
-    # def find_path_DFS(self, reasoner, start, end):
-    #     """
-    #     Find a path between two nodes using DFS.
-    #     If there exists a path, this means we have
-    #     no d-separation so we return False.
-    #     If there is no such a path, return True.
-    #     """
-    #     visited = []  # The nodes that have been visited
-    #     search_nodes = [start]  # Nodes to find paths from.
-    #     while len(search_nodes) > 0:
-    #         node = search_nodes.pop()
-    #         if node == end:
-    #             return False
-
-    #         if node not in visited:
-    #             visited.append(node)
-    #             neighbors = list(nx.all_neighbors(reasoner.bn.structure, node))
-    #             for neighbor in neighbors:
-    #                 search_nodes.append(neighbor)
-    #     return True
-
-
-    # def find_path_BFS(self, reasoner, start, end):
-    #     """
-    #     Find a path between two nodes using BFS.
-    #     If there exists a path, this means we have
-    #     no d-separation so we return False.
-    #     If there is no such a path, return True.
-    #     """
-    #     visited = [] # The nodes that have been visited
-    #     queue = [start] # Nodes to find paths from.
-    #     while len(queue) > 0:
-    #             node = queue.pop()
-    #             if node == end:
-    #                 return False
-
-    #             neighbors = list(nx.all_neighbors(reasoner.bn.structure, node))
-    #             for neighbor in neighbors:
-    #                 if neighbor not in visited:
-    #                     queue.append(neighbor)
-    #                     visited.append(neighbor)
-
-    #     return True
 
 
     def d_separation(self, start, end, evidence):
@@ -178,7 +142,6 @@ class BNReasoner:
 
         # Remove leaf nodes
 
-
         # Remove outgoing edges
         reasoner_copy = BNReasoner(self.bn)
         for e in evidence:
@@ -199,7 +162,6 @@ class BNReasoner:
             return True
 
         return False
-
 
     def factor_multiplication(self, fac_f: pd.DataFrame, fac_g: pd.DataFrame) -> pd.DataFrame:
         """
@@ -236,6 +198,7 @@ class BNReasoner:
         merged.drop(['p_x', 'p_y'], axis=1, inplace=True)
 
         return merged
+
 
 
     def variable_elimination(self, variables: list) -> pd.DataFrame:
@@ -321,38 +284,40 @@ class BNReasoner:
         mpe_set = variable_set.difference(evidence_set)
         for variable, evidence in evidence_dict.items():
             self.network_pruning(variable, evidence)
+
         # maximize-out all variables in mpe_set
-        for variable in mpe_set:
-            self.maxing_out(variable)
         highest = 0
         highest_cpt = None
-        for variable in self.bn.get_all_variables():
-            cpt = self.bn.get_cpt(variable)
-            p = cpt.loc[:, 'p'].tolist()[0]
-            if p > highest:
-                highest = p
-                highest_cpt = cpt
-        return self.cpt_to_dict(highest_cpt), 'p='+str(highest)
+        for variable in mpe_set:
+            for all_vars in self.bn.get_all_variables():
+                if variable in self.bn.get_cpt(all_vars).columns:
+                    maxed_out = self.maxing_out(self.bn.get_cpt(all_vars), variable)
+                    print(maxed_out)
+                    cpt = self.bn.get_cpt(variable)
+                    p = cpt.loc[:, 'p'].tolist()
+                    for item in p:
+                        if item >= highest:
+                            highest = item
+                            highest_cpt = cpt
+        return self.cpt_to_dict(highest_cpt, evidence_dict, highest), 'p='+str(highest)
 
     @staticmethod
-    def cpt_to_dict(cpt):
+    def cpt_to_dict(cpt, evidence_dict, highest):
         """
         :param cpt:
         :return:
         """
         dict_cpt = dict()
-        p_value = cpt.loc[:, 'p'].tolist()[0]
-        variables = cpt.loc[:, 'extended_factors'].tolist()[0]
-        variables = variables.split(',')
-        for column in cpt.columns:
-            if column not in ('p', 'extended_factors'):
-                dict_cpt[column] = cpt.loc[:, column].tolist()[0]
-        for pair in variables:
-            pair = pair.split('= ')
-            var, value = pair
-            dict_cpt[var] = value
+        variables = cpt.loc[:, 'extended_factors'][[cpt.index[cpt['p'] == highest][0]]].tolist()
+        for item in variables:
+            item = item.split(',')
+            for it in item:
+                var, value = it.split('= ')
+                dict_cpt[var] = value
         for keys in dict_cpt:
             dict_cpt[keys] = str(dict_cpt[keys])
+        for item, item_value in evidence_dict.items():
+            dict_cpt[item] = item_value
         return dict_cpt
 
     def new_edge_counter(self, int_graph):
@@ -412,12 +377,41 @@ class BNReasoner:
 
 
 
+    def get_path(self, start, end):
+        """
+        :param start: variable to start the path from
+        :param end: variable to end the path
+        :return: a list of the path from the start to end variable
+        """
+        network = self.bn.structure
+
+        if nx.has_path(network, source=start, target=end):
+            return nx.shortest_path(network, source=start, target=end)
+
+
+    def marginal_distribution(self, query_variables: list, variable, evidence):
+        """
+        :param query_variables: The query variable against which you want to test the evidence
+        :param variable: The variable for which you have evidence
+        :param evidence: Assignment of the variable: True/False
+        """
+        eliminate_vars = []
+        for j in query_variables:
+            for i in self.get_path(variable, j):
+                if i not in query_variables and i != variable and i not in eliminate_vars:
+                    eliminate_vars.append(i)
+
+        new_network = self.network_pruning(variable, evidence)
+        new_table = new_network.variable_elimination(eliminate_vars)
+        return new_table
+
+
 if __name__ == "__main__":
     # Hardcoded voorbeeld om stuk te testen
     # BN1 = BNReasoner('testing/test.BIFXML')
     BN2 = BNReasoner('testing/lecture_example.BIFXML')
     # BN3 = BNReasoner('testing/lecture_example2.BIFXML')
-    # BN4 = BNReasoner('testing/dog_problem.BIFXML')
+    BN4 = BNReasoner('testing/dog_problem.BIFXML')
 
     # var_elim = BN4.variable_elimination(["bowel-problem", "family-out"])
     # print(var_elim)
@@ -431,13 +425,19 @@ if __name__ == "__main__":
     print(BN2.d_separation(["Rain?"], ["Sprinkler?"], ["Winter?", "Wet Grass?"]))
 
     # check = BN.independence(["Slippery Road?"], ["Sprinkler?"], ["Winter?", "Rain?"])
+    for variable in BN2.bn.get_all_variables():
+        print(BN2.bn.get_cpt(variable))
+    print('\n')
 
-    # for variable in BN.bn.get_all_variables():
-    #     print(BN.bn.get_cpt(variable))
+    print('1.5=',BN2.most_probable_explanation({'Rain?':True, 'Winter?':False}))
+
+    for variable in BN2.bn.get_all_variables():
+        print(BN2.bn.get_cpt(variable))
+    print('\n')
     # print('\n\n')
     # BN.network_pruning('Rain?', False)
     # BN.bn.draw_structure()
     # for variable in BN3.bn.get_all_variables():
     #     print(BN3.bn.get_cpt(variable))
     # BN2.bn.draw_structure()
-    # print('highest=', BN2.most_probable_explanation({'Rain?': True, 'Sprinkler?': False}))
+
