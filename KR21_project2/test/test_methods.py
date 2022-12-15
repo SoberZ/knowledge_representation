@@ -40,19 +40,19 @@ class MyTestCase(unittest.TestCase):
         for i, j in zip(test_df.iterrows(), maxed_out_BN.iterrows()):
             self.assertEqual(str(i[1].to_string()), str(j[1].to_string()))
 
-    # def test_d_separation(self):
-    #     BN = BNR.BNReasoner('testing/lecture_example.BIFXML')
-    #     response1 = BN.d_separation(['Rain?'], ['Sprinkler?'], ['Winter?'])  # Not d-separated
-    #     response2 = BN.d_separation(['Rain?'], ['Sprinkler?'], ['Winter?', 'Wet Grass?'])  # d-separated
-    #     self.assertEqual(response1, True)
-    #     self.assertEqual(response2, False)
-    #
-    # def test_independence(self):
-    #     BN = BNR.BNReasoner('testing/lecture_example.BIFXML')
-    #     response1 = BN.d_separation(['Rain?'], ['Sprinkler?'], ['Winter?'])  # Not d-separated
-    #     response2 = BN.d_separation(['Rain?'], ['Sprinkler?'], ['Winter?', 'Wet Grass?'])  # d-separated
-    #     self.assertEqual(response1, True)
-    #     self.assertEqual(response2, False)
+    def test_d_separation(self):
+        BN = BNR.BNReasoner('testing/lecture_example.BIFXML')
+        response1 = BN.d_separation(['Rain?'], ['Sprinkler?'], ['Winter?'])  # Not d-separated
+        response2 = BN.d_separation(['Rain?'], ['Sprinkler?'], ['Winter?', 'Wet Grass?'])  # d-separated
+        self.assertEqual(response1, True)
+        self.assertEqual(response2, False)
+
+    def test_independence(self):
+        BN = BNR.BNReasoner('testing/lecture_example.BIFXML')
+        response1 = BN.d_separation(['Rain?'], ['Sprinkler?'], ['Winter?'])  # Not d-separated
+        response2 = BN.d_separation(['Rain?'], ['Sprinkler?'], ['Winter?', 'Wet Grass?'])  # d-separated
+        self.assertEqual(response1, True)
+        self.assertEqual(response2, False)
 
     def test_factor_multiplication(self):
         # Initialising example and running method
@@ -124,8 +124,8 @@ class MyTestCase(unittest.TestCase):
         max_b = BN4.maximum_a_posteriori(["bowel-problem", "hear-bark"])
         max_a = BN4.maximum_a_posteriori_marginalize(["bowel-problem", "hear-bark"])
         # setup correct answer in dataframe
-        answer_Data = {'bowel-problem': [False, False, True, True], 'hear-bark':
-            [False, True, False, True], 'p': [0.640315, 0.359685, 0.286345, 0.713655]}
+        answer_Data = {'p': [0.640315, 0.713655], 'extended_factors':
+            ['bowel-problem= False,hear-bark= False', 'bowel-problem= True,hear-bark= True']}
         expected = pd.DataFrame(data=answer_Data)
         # check for each row if the outcome equals the expected outcome
         for outcome in (max_b, max_a):

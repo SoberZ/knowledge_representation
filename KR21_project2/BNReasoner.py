@@ -417,8 +417,8 @@ if __name__ == "__main__":
 
     max_b = BN4.maximum_a_posteriori(["bowel-problem", "hear-bark"])
     print(max_b)
-    # max_a = BN4.maximum_a_posteriori_marginalize(["bowel-problem", "hear-bark"])
-    # print(max_a)
+    max_a = BN4.maximum_a_posteriori_marginalize(["bowel-problem", "hear-bark"])
+    print(max_a)
 
     # BN4.bn.draw_structure()
     # print(BN2.d_separation(["Rain?"], ["Sprinkler?"], ["Winter?", "Wet Grass?"]))
