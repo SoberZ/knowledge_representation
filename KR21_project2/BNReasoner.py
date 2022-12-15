@@ -213,7 +213,7 @@ class BNReasoner:
             # Step 1. Join all factors containing that variable
             cpts = []
             if partial_factors is not None:
-                print(partial_factors)
+                # print(partial_factors)
                 cpts.append(partial_factors)
             partial_factors = None
 
@@ -374,36 +374,6 @@ class BNReasoner:
             print("ERROR: please choose between min-degree or min-fill.")
 
         return order[:len(self.bn.get_all_variables())]
-    
-
-
-    def get_path(self, start, end):
-        """
-        :param start: variable to start the path from
-        :param end: variable to end the path
-        :return: a list of the path from the start to end variable
-        """
-        network = self.bn.structure
-
-        if nx.has_path(network, source=start, target=end):
-            return nx.shortest_path(network, source=start, target=end)
-        
-
-    def marginal_distribution(self, query_variables: list, variable, evidence):
-        """
-        :param query_variables: The query variable against which you want to test the evidence
-        :param variable: The variable for which you have evidence
-        :param evidence: Assignment of the variable: True/False
-        """
-        eliminate_vars = []
-        for j in query_variables:
-            for i in self.get_path(variable, j):
-                if i not in query_variables and i != variable and i not in eliminate_vars:
-                    eliminate_vars.append(i)
-
-        new_network = self.network_pruning(variable, evidence)
-        new_table = new_network.variable_elimination(eliminate_vars)
-        return new_table
 
 
     def get_path(self, start, end):
@@ -438,7 +408,7 @@ class BNReasoner:
 if __name__ == "__main__":
     # Hardcoded voorbeeld om stuk te testen
     # BN1 = BNReasoner('testing/test.BIFXML')
-    BN2 = BNReasoner('testing/lecture_example.BIFXML')
+    # BN2 = BNReasoner('testing/lecture_example.BIFXML')
     # BN3 = BNReasoner('testing/lecture_example2.BIFXML')
     BN4 = BNReasoner('testing/dog_problem.BIFXML')
 
@@ -446,24 +416,24 @@ if __name__ == "__main__":
     # var_elim = BN4.variable_elimination(["bowel-problem", "family-out"])
     # print(var_elim)
 
-    # max_b = BN4.maximum_a_posteriori(["bowel-problem", "hear-bark"])
-    # print(max_b)
+    max_b = BN4.maximum_a_posteriori(["bowel-problem", "hear-bark"])
+    print(max_b)
     # max_a = BN4.maximum_a_posteriori_marginalize(["bowel-problem", "hear-bark"])
     # print(max_a)
 
     # BN4.bn.draw_structure()
-    print(BN2.d_separation(["Rain?"], ["Sprinkler?"], ["Winter?", "Wet Grass?"]))
+    # print(BN2.d_separation(["Rain?"], ["Sprinkler?"], ["Winter?", "Wet Grass?"]))
 
     # check = BN.independence(["Slippery Road?"], ["Sprinkler?"], ["Winter?", "Rain?"])
-    for variable in BN2.bn.get_all_variables():
-        print(BN2.bn.get_cpt(variable))
-    print('\n')
+    # for variable in BN2.bn.get_all_variables():
+    #     print(BN2.bn.get_cpt(variable))
+    # print('\n')
 
-    print('1.5=',BN2.most_probable_explanation({'Rain?':True, 'Winter?':False}))
+    # print('1.5=',BN2.most_probable_explanation({'Rain?':True, 'Winter?':False}))
 
-    for variable in BN2.bn.get_all_variables():
-        print(BN2.bn.get_cpt(variable))
-    print('\n')
+    # for variable in BN2.bn.get_all_variables():
+    #     print(BN2.bn.get_cpt(variable))
+    # print('\n')
     # print('\n\n')
     # BN.network_pruning('Rain?', False)
     # BN.bn.draw_structure()
