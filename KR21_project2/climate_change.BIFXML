@@ -61,7 +61,7 @@
         <OUTCOME>False</OUTCOME>
     </VARIABLE>
     <VARIABLE TYPE="nature">
-        <NAME>Positive Radioactive Forcing</NAME>
+        <NAME>Positive Radiative Forcing</NAME>
         <OUTCOME>True</OUTCOME>
         <OUTCOME>False</OUTCOME>
     </VARIABLE>
@@ -115,7 +115,7 @@
         <TABLE>0 1 0.3 0.7 0.2 0.8 0.95 0.05</TABLE>
     </DEFINITION>
     <DEFINITION>
-        <FOR>Positive Radioactive Forcing</FOR>
+        <FOR>Positive Radiative Forcing</FOR>
         <GIVEN>Earth Surface Reflectivity</GIVEN>
         <GIVEN>Increase Greenhouse Gasses</GIVEN>
         <TABLE>0.3 0.7 0 1 1 0 0.3 0.7</TABLE>
