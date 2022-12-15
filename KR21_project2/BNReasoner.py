@@ -89,7 +89,6 @@ class BNReasoner:
         else:
             df_new['extended_factors'] = new_list
         df_new = df_new.drop(labels=variable, axis='columns')
-        self.bn.update_cpt(variable, df_new)
         return df_new
 
 
@@ -292,7 +291,7 @@ class BNReasoner:
             for all_vars in self.bn.get_all_variables():
                 if variable in self.bn.get_cpt(all_vars).columns:
                     maxed_out = self.maxing_out(self.bn.get_cpt(all_vars), variable)
-                    print(maxed_out)
+                    self.bn.update_cpt(variable, maxed_out)
                     cpt = self.bn.get_cpt(variable)
                     p = cpt.loc[:, 'p'].tolist()
                     for item in p:
