@@ -23,7 +23,6 @@ class BNReasoner:
         else:
             self.bn = net
 
-
     def network_pruning(self, variable, evidence):
         """
         :param variable: Variable which has known evidence to prune network with
@@ -58,7 +57,6 @@ class BNReasoner:
             df2 = factor.groupby(group_cols, as_index=False)['p'].sum()
             return df2
         return False
-
 
     def maxing_out(self, factor: pd.DataFrame, variable: str):
         """
@@ -104,7 +102,6 @@ class BNReasoner:
                     search_nodes.append(neighbor)
         return True
 
-
     def find_path_BFS(self, reasoner, start, end):
         """
         Find a path between two nodes using BFS.
@@ -126,7 +123,6 @@ class BNReasoner:
                         visited.append(neighbor)
 
         return True
-
 
     def d_separation(self, X, Y, Z):
         """
@@ -173,7 +169,6 @@ class BNReasoner:
                     res = res and self.find_path_BFS(reasoner_copy, start, end)
         return res
 
-
     def independence(self, X, Y, Z):
         """
         Given three sets of variables X, Y, and Z,
@@ -189,7 +184,6 @@ class BNReasoner:
             return True
 
         return False
-
 
     def factor_multiplication(self, fac_f: pd.DataFrame, fac_g: pd.DataFrame) -> pd.DataFrame:
         """
@@ -313,31 +307,33 @@ class BNReasoner:
         highest_cpt = None
         for variable in self.bn.get_all_variables():
             cpt = self.bn.get_cpt(variable)
-            p = cpt.loc[:, 'p'].tolist()[0]
-            if p > highest:
-                highest = p
-                highest_cpt = cpt
-        return self.cpt_to_dict(highest_cpt), 'p='+str(highest)
+            p = cpt.loc[:, 'p'].tolist()
+            for item in p:
+                if item > highest:
+                    highest = item
+                    highest_cpt = cpt
+        return self.cpt_to_dict(highest_cpt, evidence_dict, highest), 'p='+str(highest)
 
     @staticmethod
-    def cpt_to_dict(cpt):
+    def cpt_to_dict(cpt, evidence_dict, highest):
         """
         :param cpt:
         :return:
         """
         dict_cpt = dict()
-        p_value = cpt.loc[:, 'p'].tolist()[0]
-        variables = cpt.loc[:, 'extended_factors'].tolist()[0]
-        variables = variables.split(',')
+        variables = cpt.loc[:, 'extended_factors'][[cpt.index[cpt['p'] == highest][0]]].tolist()
         for column in cpt.columns:
             if column not in ('p', 'extended_factors'):
                 dict_cpt[column] = cpt.loc[:, column].tolist()[0]
-        for pair in variables:
-            pair = pair.split('= ')
-            var, value = pair
-            dict_cpt[var] = value
+        for item in variables:
+            item = item.split(',')
+            for it in item:
+                var, value = it.split('= ')
+                dict_cpt[var] = value
         for keys in dict_cpt:
             dict_cpt[keys] = str(dict_cpt[keys])
+        for item,item_value in evidence_dict.items():
+            dict_cpt[item] = item_value
         return dict_cpt
 
     def new_edge_counter(self, int_graph):
@@ -394,7 +390,6 @@ class BNReasoner:
             print("ERROR: please choose between min-degree or min-fill.")
 
         return order[:len(self.bn.get_all_variables())]
-
 
 
 if __name__ == "__main__":
