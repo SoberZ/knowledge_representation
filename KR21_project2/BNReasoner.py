@@ -437,32 +437,34 @@ class BNReasoner:
 if __name__ == "__main__":
     # Hardcoded voorbeeld om stuk te testen
     # BN1 = BNReasoner('testing/test.BIFXML')
-    BN2 = BNReasoner('testing/lecture_example.BIFXML')
+    # BN2 = BNReasoner('testing/lecture_example.BIFXML')
     # BN3 = BNReasoner('testing/lecture_example2.BIFXML')
-    # BN4 = BNReasoner('testing/dog_problem.BIFXML')
+    BN4 = BNReasoner('testing/dog_problem.BIFXML')
 
 
     # var_elim = BN4.variable_elimination(["bowel-problem", "family-out"])
     # print(var_elim)
 
-    # max_b = BN4.maximum_a_posteriori(["bowel-problem", "hear-bark"])
-    # print(max_b)
-    # max_a = BN4.maximum_a_posteriori_marginalize(["bowel-problem", "hear-bark"])
-    # print(max_a)
+    max_b = BN4.maximum_a_posteriori(["bowel-problem", "hear-bark"])
+    print(max_b)
+    max_a = BN4.maximum_a_posteriori_marginalize(["bowel-problem", "hear-bark"])
+    print(max_a)
     # check = BN.independence(["Slippery Road?"], ["Sprinkler?"], ["Winter?", "Rain?"])
-    for variable in BN2.bn.get_all_variables():
-        print(BN2.bn.get_cpt(variable))
-    print('\n')
-
-    print('1.5=',BN2.most_probable_explanation({'Rain?':True, 'Winter?':False}))
-
-    for variable in BN2.bn.get_all_variables():
-        print(BN2.bn.get_cpt(variable))
-    print('\n')
+    # for variable in BN2.bn.get_all_variables():
+    #     print(BN2.bn.get_cpt(variable))
+    # print('\n')
+    #
+    # print('1.5=',BN2.most_probable_explanation({'Rain?':True, 'Winter?':False}))
+    #
+    # for variable in BN2.bn.get_all_variables():
+    #     print(BN2.bn.get_cpt(variable))
+    # print('\n')
     # print('\n\n')
     # BN.network_pruning('Rain?', False)
     # BN.bn.draw_structure()
     # for variable in BN3.bn.get_all_variables():
     #     print(BN3.bn.get_cpt(variable))
     # BN2.bn.draw_structure()
+    # print(BN1.marginal_distribution(['C'], 'A', True))
+
 
