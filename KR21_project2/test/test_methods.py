@@ -35,8 +35,7 @@ class MyTestCase(unittest.TestCase):
 
         # Create BN from example and perform network_pruning on it
         BN = BNR.BNReasoner('testing/lecture_example.BIFXML')
-        maxed_out_BN = BN.maxing_out('Rain?').bn.get_cpt('Rain?')
-
+        maxed_out_BN = BN.maxing_out(BN.bn.get_cpt('Rain?'), 'Rain?')
         # Check if pruned dataframe is the same as the correct answer
         for i, j in zip(test_df.iterrows(), maxed_out_BN.iterrows()):
             self.assertEqual(str(i[1].to_string()), str(j[1].to_string()))

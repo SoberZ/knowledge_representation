@@ -68,42 +68,27 @@ class BNReasoner:
 
         # A new Dataframe is made per CPT in which the rows are sorted on score and the duplicates
         # with the lowest score are removed. The self.bn is then updated using the new dataframe.
-       # for current_var in self.bn.get_all_variables():
-        #    if variable in self.bn.get_cpt(current_var).columns:
-         #       new_list = []
-          #      newer_list = []
-           #     df_new = self.bn.get_cpt(
-            #        current_var).sort_values('p', ascending=False)
-             #   df_new = df_new.drop_duplicates(
-              #      subset=self.bn.get_cpt(current_var).columns.difference(
-             #           [variable, 'p'])).sort_index()
-             #   for item in df_new.loc[:, variable].tolist():
-             #       new_list.append(variable + '= ' + str(item))
-             #   if 'extended_factors' in df_new.columns:
-             #       for i, item in enumerate(df_new['extended_factors']):
-             #           newer_list.append(item + ',' + new_list[i])
-             #       df_new['extended_factors'] = newer_list
-
-             #   else:
-             #       df_new['extended_factors'] = new_list
-             #   # df_new['extended_factors'].append(new_extended_factor)
-             #   df_new = df_new.drop(labels=variable, axis='columns')
-             #   self.bn.update_cpt(current_var, df_new)
-        #return self
 
         # There is only one column to maximize over.
         if len(factor.columns) == 2 and factor.columns[0] == variable:
             return factor
 
+        new_list = []
+        newer_list = []
         df_new = factor.sort_values('p', ascending=False)
-        df_new = df_new.drop_duplicates(subset=factor.columns.difference([variable, 'p'])).sort_index()
-        new_extended_factor = variable + '=' + str(df_new.loc[:, variable].tolist()[0])
+        df_new = df_new.drop_duplicates(
+            subset=factor.columns.difference(
+                [variable, 'p'])).sort_index()
+        for item in df_new.loc[:, variable].tolist():
+            new_list.append(variable + '= ' + str(item))
         if 'extended_factors' in df_new.columns:
-            df_new['extended_factors'] = \
-                df_new['extended_factors'] + ',' + new_extended_factor
+            for i, item in enumerate(df_new['extended_factors']):
+                newer_list.append(item + ',' + new_list[i])
+            df_new['extended_factors'] = newer_list
         else:
-            df_new['extended_factors'] = new_extended_factor
+            df_new['extended_factors'] = new_list
         df_new = df_new.drop(labels=variable, axis='columns')
+        self.bn.update_cpt(variable, df_new)
         return df_new
 
 
@@ -327,18 +312,21 @@ class BNReasoner:
         mpe_set = variable_set.difference(evidence_set)
         for variable, evidence in evidence_dict.items():
             self.network_pruning(variable, evidence)
+
         # maximize-out all variables in mpe_set
-        for variable in mpe_set:
-            self.maxing_out(variable)
         highest = 0
         highest_cpt = None
-        for variable in self.bn.get_all_variables():
-            cpt = self.bn.get_cpt(variable)
-            p = cpt.loc[:, 'p'].tolist()
-            for item in p:
-                if item > highest:
-                    highest = item
-                    highest_cpt = cpt
+        for variable in mpe_set:
+            for all_vars in self.bn.get_all_variables():
+                if variable in self.bn.get_cpt(all_vars).columns:
+                    maxed_out = self.maxing_out(self.bn.get_cpt(all_vars), variable)
+                    print(maxed_out)
+                    cpt = self.bn.get_cpt(variable)
+                    p = cpt.loc[:, 'p'].tolist()
+                    for item in p:
+                        if item >= highest:
+                            highest = item
+                            highest_cpt = cpt
         return self.cpt_to_dict(highest_cpt, evidence_dict, highest), 'p='+str(highest)
 
     @staticmethod
@@ -349,9 +337,6 @@ class BNReasoner:
         """
         dict_cpt = dict()
         variables = cpt.loc[:, 'extended_factors'][[cpt.index[cpt['p'] == highest][0]]].tolist()
-        for column in cpt.columns:
-            if column not in ('p', 'extended_factors'):
-                dict_cpt[column] = cpt.loc[:, column].tolist()[0]
         for item in variables:
             item = item.split(',')
             for it in item:
@@ -359,7 +344,7 @@ class BNReasoner:
                 dict_cpt[var] = value
         for keys in dict_cpt:
             dict_cpt[keys] = str(dict_cpt[keys])
-        for item,item_value in evidence_dict.items():
+        for item, item_value in evidence_dict.items():
             dict_cpt[item] = item_value
         return dict_cpt
 
@@ -422,23 +407,28 @@ class BNReasoner:
 if __name__ == "__main__":
     # Hardcoded voorbeeld om stuk te testen
     # BN1 = BNReasoner('testing/test.BIFXML')
-    # BN2 = BNReasoner('testing/lecture_example.BIFXML')
+    BN2 = BNReasoner('testing/lecture_example.BIFXML')
     # BN3 = BNReasoner('testing/lecture_example2.BIFXML')
-    BN4 = BNReasoner('testing/dog_problem.BIFXML')
+    # BN4 = BNReasoner('testing/dog_problem.BIFXML')
 
 
     # var_elim = BN4.variable_elimination(["bowel-problem", "family-out"])
     # print(var_elim)
 
-    max_b = BN4.maximum_a_posteriori(["bowel-problem", "hear-bark"])
-    print(max_b)
-    max_a = BN4.maximum_a_posteriori_marginalize(["bowel-problem", "hear-bark"])
-    print(max_a)
+    # max_b = BN4.maximum_a_posteriori(["bowel-problem", "hear-bark"])
+    # print(max_b)
+    # max_a = BN4.maximum_a_posteriori_marginalize(["bowel-problem", "hear-bark"])
+    # print(max_a)
     # check = BN.independence(["Slippery Road?"], ["Sprinkler?"], ["Winter?", "Rain?"])
-    # for variable in BN2.bn.get_all_variables():
-    #     print(BN2.bn.get_cpt(variable))
-    # print('\n')
-    # print(BN2.most_probable_explanation({'Rain?': True, 'Winter?': False}))
+    for variable in BN2.bn.get_all_variables():
+        print(BN2.bn.get_cpt(variable))
+    print('\n')
+
+    print('1.5=',BN2.most_probable_explanation({'Rain?':True, 'Winter?':False}))
+
+    for variable in BN2.bn.get_all_variables():
+        print(BN2.bn.get_cpt(variable))
+    print('\n')
     # print('\n\n')
     # BN.network_pruning('Rain?', False)
     # BN.bn.draw_structure()
