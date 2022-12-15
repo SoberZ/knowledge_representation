@@ -60,30 +60,27 @@ class BNReasoner:
         return False
 
 
-    def maxing_out(self, variable):
+    def maxing_out(self, factor: pd.DataFrame, variable: str):
         """
+        A new Dataframe is made per CPT in which the rows are sorted on score and the duplicates
+        with the lowest score are removed. The self.bn is then updated using the new dataframe.
+
         :param variable: The variable which you want to max-out on
         """
-        # A new Dataframe is made per CPT in which the rows are sorted on score and the duplicates
-        # with the lowest score are removed. The self.bn is then updated using the new dataframe.
-        for current_var in self.bn.get_all_variables():
-            if variable in self.bn.get_cpt(current_var).columns:
-                df_new = self.bn.get_cpt(
-                    current_var).sort_values('p', ascending=False)
-                df_new = df_new.drop_duplicates(
-                    subset=self.bn.get_cpt(current_var).columns.difference(
-                        [variable, 'p'])).sort_index()
-                new_extended_factor = variable + '= ' + \
-                    str(df_new.loc[:, variable].tolist()[0])
-                if 'extended_factors' in df_new.columns:
-                    df_new['extended_factors'] = \
-                        df_new['extended_factors'] + ',' + new_extended_factor
-                else:
-                    df_new['extended_factors'] = new_extended_factor
-                # df_new['extended_factors'].append(new_extended_factor)
-                df_new = df_new.drop(labels=variable, axis='columns')
-                self.bn.update_cpt(current_var, df_new)
-        return self
+        # There is only one column to maximize over.
+        if len(factor.columns) == 2 and factor.columns[0] == variable:
+            return factor
+
+        df_new = factor.sort_values('p', ascending=False)
+        df_new = df_new.drop_duplicates(subset=factor.columns.difference([variable, 'p'])).sort_index()
+        new_extended_factor = variable + '=' + str(df_new.loc[:, variable].tolist()[0])
+        if 'extended_factors' in df_new.columns:
+            df_new['extended_factors'] = \
+                df_new['extended_factors'] + ',' + new_extended_factor
+        else:
+            df_new['extended_factors'] = new_extended_factor
+        df_new = df_new.drop(labels=variable, axis='columns')
+        return df_new
 
 
     def find_path_DFS(self, reasoner, start, end):
@@ -132,6 +129,30 @@ class BNReasoner:
 
 
     def d_separation(self, X, Y, Z):
+        """
+        X, Y - Sets of Nodes to check for d-separation
+        Z - Evidence
+        D-Separation algorithm. X and Y are d-separated by Z iff every
+        path between a node in X to a node in Y is d-blocked by Z.
+        """
+        reasoner_copy = BNReasoner(self.bn)
+        for evidence in Z:
+            reasoner_copy.network_pruning(evidence, True)
+
+        self.bn.draw_structure()
+
+        res = True
+        for start in X:
+            for end in Y:
+                # End in evidence is d-separated.
+                if end in Z:
+                    res = res and True
+                else:
+                    res = res and self.find_path_DFS(reasoner_copy, start, end)
+        return res
+
+
+    def d_separation_BFS(self, X, Y, Z):
         """
         X, Y - Sets of Nodes to check for d-separation
         Z - Evidence
@@ -207,13 +228,12 @@ class BNReasoner:
         return merged
 
 
-    def variable_elimination(self, variables: list):
+    def variable_elimination(self, variables: list) -> pd.DataFrame:
         """
         Sum out a set of variables by using variable elimination.
         """
         # Get all cpts
         cpt_dict = self.bn.get_all_cpts()
-        print(cpt_dict)
         partial_factors = None
 
         for variable in variables:
@@ -236,6 +256,46 @@ class BNReasoner:
             partial_factors = self.marginalization(joined_factors, variable)
 
         return partial_factors
+
+
+    def maximum_a_posteriori(self, evidence: list):
+        """
+        Compute maximum a-posteriory instantiation + value of query variables
+        Q given a possibly empty evidence e.
+        """
+        # Remove non-evidence from the joint distribution
+        q_not_e = [i for i in self.bn.get_all_variables() if i not in evidence]
+        marginal_distribution = self.variable_elimination(q_not_e)
+
+        for e in evidence:
+            marginal_distribution = self.maxing_out(marginal_distribution, e)
+
+        return marginal_distribution
+
+
+    def maximum_a_posteriori_marginalize(self, evidence: list):
+        """
+        Compute maximum a-posteriory instantiation + value of query variables
+        Q given a possibly empty evidence e.
+        """
+        # Remove non-evidence from the joint distribution
+        q_not_e = [i for i in self.bn.get_all_variables() if i not in evidence]
+
+        # Join all tables containing the q/e
+        all_cpts = self.bn.get_all_cpts().items()
+        res = list(filter(lambda x: any(q in x[1].columns for q in q_not_e), all_cpts))
+        res = [a for _, a in res]
+        marginal_distribution = reduce(lambda x, y: self.factor_multiplication(x, y), res)
+
+        # Then sum out q_not_e
+        for e in q_not_e:
+            marginal_distribution = self.marginalization(marginal_distribution, e)
+
+        # Max out evidence
+        for e in evidence:
+            marginal_distribution = self.maxing_out(marginal_distribution, e)
+
+        return marginal_distribution
 
     def most_probable_explanation(self, evidence_dict):
         """
@@ -336,15 +396,22 @@ class BNReasoner:
         return order[:len(self.bn.get_all_variables())]
 
 
+
 if __name__ == "__main__":
     # Hardcoded voorbeeld om stuk te testen
     # BN1 = BNReasoner('testing/test.BIFXML')
-    BN2 = BNReasoner('testing/lecture_example.BIFXML')
-    BN3 = BNReasoner('testing/lecture_example2.BIFXML')
-    # BN4 = BNReasoner('testing/dog_problem.BIFXML')
-    #
-    # var_elim = BN4.variable_elimination(["family-out", "light-on"])
+    # BN2 = BNReasoner('testing/lecture_example.BIFXML')
+    # BN3 = BNReasoner('testing/lecture_example2.BIFXML')
+    BN4 = BNReasoner('testing/dog_problem.BIFXML')
+
+    # var_elim = BN4.variable_elimination(["bowel-problem", "family-out"])
     # print(var_elim)
+
+    max_b = BN4.maximum_a_posteriori(["bowel-problem", "hear-bark"])
+    print(max_b)
+    max_a = BN4.maximum_a_posteriori_marginalize(["bowel-problem", "hear-bark"])
+    print(max_a)
+
     # check = BN.independence(["Slippery Road?"], ["Sprinkler?"], ["Winter?", "Rain?"])
 
     # for variable in BN.bn.get_all_variables():
@@ -354,5 +421,5 @@ if __name__ == "__main__":
     # BN.bn.draw_structure()
     # for variable in BN3.bn.get_all_variables():
     #     print(BN3.bn.get_cpt(variable))
-    BN2.bn.draw_structure()
+    # BN2.bn.draw_structure()
     # print('highest=', BN2.most_probable_explanation({'Rain?': True, 'Sprinkler?': False}))
