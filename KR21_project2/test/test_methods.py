@@ -44,15 +44,15 @@ class MyTestCase(unittest.TestCase):
     #     BN = BNR.BNReasoner('testing/lecture_example.BIFXML')
     #     response1 = BN.d_separation(['Rain?'], ['Sprinkler?'], ['Winter?'])  # Not d-separated
     #     response2 = BN.d_separation(['Rain?'], ['Sprinkler?'], ['Winter?', 'Wet Grass?'])  # d-separated
-    #     self.assertEqual(response1, False)
-    #     self.assertEqual(response2, True)
+    #     self.assertEqual(response1, True)
+    #     self.assertEqual(response2, False)
     #
     # def test_independence(self):
     #     BN = BNR.BNReasoner('testing/lecture_example.BIFXML')
     #     response1 = BN.d_separation(['Rain?'], ['Sprinkler?'], ['Winter?'])  # Not d-separated
     #     response2 = BN.d_separation(['Rain?'], ['Sprinkler?'], ['Winter?', 'Wet Grass?'])  # d-separated
-    #     self.assertEqual(response1, False)
-    #     self.assertEqual(response2, True)
+    #     self.assertEqual(response1, True)
+    #     self.assertEqual(response2, False)
 
     def test_factor_multiplication(self):
         # Initialising example and running method
@@ -109,10 +109,28 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(test_case_2, expected_result_2)
 
     def test_marginal_distributions(self):
-        pass
+        BN1 = BNR.BNReasoner('testing/test.BIFXML')
+        outcome = BN1.marginal_distribution(['C'], 'A', True)
+        # setup correct answer in dataframe
+        answer_Data = {'A': [True, True], 'C':
+            [False, True], 'p': [0.68, 0.32]}
+        expected = pd.DataFrame(data=answer_Data)
+        # check for each row if the outcome equals the expected outcome
+        for i, j in zip(expected.iterrows(), outcome.iterrows()):
+            self.assertEqual(str(i[1].to_string()), str(j[1].to_string()))
 
     def test_MAP(self):
-        pass
+        BN4 = BNR.BNReasoner('testing/dog_problem.BIFXML')
+        max_b = BN4.maximum_a_posteriori(["bowel-problem", "hear-bark"])
+        max_a = BN4.maximum_a_posteriori_marginalize(["bowel-problem", "hear-bark"])
+        # setup correct answer in dataframe
+        answer_Data = {'bowel-problem': [False, False, True, True], 'hear-bark':
+            [False, True, False, True], 'p': [0.640315, 0.359685, 0.286345, 0.713655]}
+        expected = pd.DataFrame(data=answer_Data)
+        # check for each row if the outcome equals the expected outcome
+        for outcome in (max_b, max_a):
+            for i, j in zip(expected.iterrows(), outcome.iterrows()):
+                self.assertEqual(str(i[1].to_string()), str(j[1].to_string()))
 
 
 if __name__ == '__main__':
