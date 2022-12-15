@@ -1,5 +1,4 @@
 import unittest
-import sys
 import pandas as pd
 import BNReasoner as BNR
 
@@ -36,8 +35,7 @@ class MyTestCase(unittest.TestCase):
 
         # Create BN from example and perform network_pruning on it
         BN = BNR.BNReasoner('testing/lecture_example.BIFXML')
-        maxed_out_BN = BN.maxing_out('Rain?').bn.get_cpt('Rain?')
-
+        maxed_out_BN = BN.maxing_out(BN.bn.get_cpt('Rain?'), 'Rain?')
         # Check if pruned dataframe is the same as the correct answer
         for i, j in zip(test_df.iterrows(), maxed_out_BN.iterrows()):
             self.assertEqual(str(i[1].to_string()), str(j[1].to_string()))
@@ -98,7 +96,17 @@ class MyTestCase(unittest.TestCase):
         self.assertEqual(correct_p_value, BN.most_probable_explanation(test_evidence)[1])
 
     def test_ordering(self):
-        pass
+        # Load lecture example
+        BN = BNR.BNReasoner('testing/lecture_example.BIFXML')
+        # Run method for both heuristics
+        test_case_1 = BN.ordering('min-degree')
+        test_case_2 = BN.ordering('min-fill')
+        # Expected orders
+        expected_result_1 = ['Slippery Road?', 'Winter?', 'Sprinkler?', 'Rain?', 'Wet Grass?']
+        expected_result_2 = ['Winter?', 'Sprinkler?', 'Wet Grass?', 'Rain?', 'Slippery Road?']
+        # Test if the methods are correct
+        self.assertEqual(test_case_1, expected_result_1)
+        self.assertEqual(test_case_2, expected_result_2)
 
     def test_marginal_distributions(self):
         pass
