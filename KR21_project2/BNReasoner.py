@@ -8,6 +8,7 @@ import pandas as pd
 import networkx as nx
 from functools import reduce
 import itertools
+import copy
 
 
 class BNReasoner:
@@ -83,96 +84,105 @@ class BNReasoner:
         return df_new
 
 
-    def find_path_DFS(self, reasoner, start, end):
+    # def find_path_DFS(self, reasoner, start, end):
+    #     """
+    #     Find a path between two nodes using DFS.
+    #     If there exists a path, this means we have
+    #     no d-separation so we return False.
+    #     If there is no such a path, return True.
+    #     """
+    #     visited = []  # The nodes that have been visited
+    #     search_nodes = [start]  # Nodes to find paths from.
+    #     while len(search_nodes) > 0:
+    #         node = search_nodes.pop()
+    #         if node == end:
+    #             return False
+
+    #         if node not in visited:
+    #             visited.append(node)
+    #             neighbors = list(nx.all_neighbors(reasoner.bn.structure, node))
+    #             for neighbor in neighbors:
+    #                 search_nodes.append(neighbor)
+    #     return True
+
+
+    # def find_path_BFS(self, reasoner, start, end):
+    #     """
+    #     Find a path between two nodes using BFS.
+    #     If there exists a path, this means we have
+    #     no d-separation so we return False.
+    #     If there is no such a path, return True.
+    #     """
+    #     visited = [] # The nodes that have been visited
+    #     queue = [start] # Nodes to find paths from.
+    #     while len(queue) > 0:
+    #             node = queue.pop()
+    #             if node == end:
+    #                 return False
+
+    #             neighbors = list(nx.all_neighbors(reasoner.bn.structure, node))
+    #             for neighbor in neighbors:
+    #                 if neighbor not in visited:
+    #                     queue.append(neighbor)
+    #                     visited.append(neighbor)
+
+    #     return True
+
+
+    def d_separation(self, start, end, evidence):
         """
-        Find a path between two nodes using DFS.
-        If there exists a path, this means we have
-        no d-separation so we return False.
-        If there is no such a path, return True.
+        X, Y - Sets of Nodes to check for d-separation
+        Z - Evidence
+        D-Separation algorithm. X and Y are d-separated by Z iff every
+        path between a node in X to a node in Y is d-blocked by Z.
         """
+        # Phase 1: insert all ancestors of Z in X
+        visit_nodes = copy.copy(evidence)
+        obs = set()
+
+        while len(visit_nodes) > 0:
+            for parent in self.bn.structure.predecessors(visit_nodes.pop()):
+                obs.add(parent)
+
+        # Phase 2
         visited = []  # The nodes that have been visited
-        search_nodes = [start]  # Nodes to find paths from.
+        search_nodes = [(s, True) for s in start]  # Nodes to find paths from.
+
         while len(search_nodes) > 0:
-            node = search_nodes.pop()
-            if node == end:
-                return False
+            node, up = search_nodes.pop()
 
-            if node not in visited:
-                visited.append(node)
-                neighbors = list(nx.all_neighbors(reasoner.bn.structure, node))
-                for neighbor in neighbors:
-                    search_nodes.append(neighbor)
-        return True
+            if (node, up) not in visited:
+                visited.append((node, up))
 
-
-    def find_path_BFS(self, reasoner, start, end):
-        """
-        Find a path between two nodes using BFS.
-        If there exists a path, this means we have
-        no d-separation so we return False.
-        If there is no such a path, return True.
-        """
-        visited = [] # The nodes that have been visited
-        queue = [start] # Nodes to find paths from.
-        while len(queue) > 0:
-                node = queue.pop()
-                if node == end:
+                if node not in evidence and node in end:
                     return False
 
-                neighbors = list(nx.all_neighbors(reasoner.bn.structure, node))
-                for neighbor in neighbors:
-                    if neighbor not in visited:
-                        queue.append(neighbor)
-                        visited.append(neighbor)
+                if up and node not in evidence:
+                    for parent in self.bn.structure.predecessors(node):
+                        search_nodes.append((parent, True))
+                    for child in self.bn.structure.successors(node):
+                        search_nodes.append((child, False))
+                elif not up:
+                    if node not in evidence:
+                        for child in self.bn.structure.successors(node):
+                            search_nodes.append((child, False))
 
+                    if node in evidence or node in obs:
+                        for parent in self.bn.structure.predecessors(node):
+                            search_nodes.append((parent, True))
         return True
 
 
-    def d_separation(self, X, Y, Z):
-        """
-        X, Y - Sets of Nodes to check for d-separation
-        Z - Evidence
-        D-Separation algorithm. X and Y are d-separated by Z iff every
-        path between a node in X to a node in Y is d-blocked by Z.
-        """
+    def d_separation_pruning(self, start, end, evidence):
+        combined = start + end + evidence
+
+        # Remove leaf nodes
+
+
+        # Remove outgoing edges
         reasoner_copy = BNReasoner(self.bn)
-        for evidence in Z:
-            reasoner_copy.network_pruning(evidence, True)
-
-        self.bn.draw_structure()
-
-        res = True
-        for start in X:
-            for end in Y:
-                # End in evidence is d-separated.
-                if end in Z:
-                    res = res and True
-                else:
-                    res = res and self.find_path_DFS(reasoner_copy, start, end)
-        return res
-
-
-    def d_separation_BFS(self, X, Y, Z):
-        """
-        X, Y - Sets of Nodes to check for d-separation
-        Z - Evidence
-        D-Separation algorithm. X and Y are d-separated by Z iff every
-        path between a node in X to a node in Y is d-blocked by Z.
-        """
-        reasoner_copy = BNReasoner(self.bn)
-        for evidence in Z:
-            reasoner_copy.network_pruning(evidence, True)
-
-        res = True
-        for start in X:
-            for end in Y:
-                # End in evidence is d-separated.
-                if end in Z:
-                    res = res and True
-                else:
-                    res = res and self.find_path_BFS(reasoner_copy, start, end)
-        return res
-
+        for e in evidence:
+            reasoner_copy.network_pruning(e, True)
 
     def independence(self, X, Y, Z):
         """
@@ -240,16 +250,20 @@ class BNReasoner:
             # Step 1. Join all factors containing that variable
             cpts = []
             if partial_factors is not None:
+                print(partial_factors)
                 cpts.append(partial_factors)
-
             partial_factors = None
+
+            # Check if variable is in the cpt
             new_dict = {}
             for cpt in cpt_dict:
                 if variable in cpt_dict[cpt].columns:
                     cpts.append(cpt_dict[cpt])
                 else:
+                    # Rest of the cpts
                     new_dict[cpt] = cpt_dict[cpt]
             cpt_dict = new_dict
+
             joined_factors = reduce(lambda x, y: self.factor_multiplication(x, y), cpts)
 
             # Step 2. Sum out the influence of the variable on new factor
@@ -296,6 +310,7 @@ class BNReasoner:
             marginal_distribution = self.maxing_out(marginal_distribution, e)
 
         return marginal_distribution
+
 
     def most_probable_explanation(self, evidence_dict):
         """
@@ -400,17 +415,20 @@ class BNReasoner:
 if __name__ == "__main__":
     # Hardcoded voorbeeld om stuk te testen
     # BN1 = BNReasoner('testing/test.BIFXML')
-    # BN2 = BNReasoner('testing/lecture_example.BIFXML')
+    BN2 = BNReasoner('testing/lecture_example.BIFXML')
     # BN3 = BNReasoner('testing/lecture_example2.BIFXML')
-    BN4 = BNReasoner('testing/dog_problem.BIFXML')
+    # BN4 = BNReasoner('testing/dog_problem.BIFXML')
 
     # var_elim = BN4.variable_elimination(["bowel-problem", "family-out"])
     # print(var_elim)
 
-    max_b = BN4.maximum_a_posteriori(["bowel-problem", "hear-bark"])
-    print(max_b)
-    max_a = BN4.maximum_a_posteriori_marginalize(["bowel-problem", "hear-bark"])
-    print(max_a)
+    # max_b = BN4.maximum_a_posteriori(["bowel-problem", "hear-bark"])
+    # print(max_b)
+    # max_a = BN4.maximum_a_posteriori_marginalize(["bowel-problem", "hear-bark"])
+    # print(max_a)
+
+    # BN4.bn.draw_structure()
+    print(BN2.d_separation(["Rain?"], ["Sprinkler?"], ["Winter?", "Wet Grass?"]))
 
     # check = BN.independence(["Slippery Road?"], ["Sprinkler?"], ["Winter?", "Rain?"])
 
