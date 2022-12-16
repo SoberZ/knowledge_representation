@@ -398,9 +398,11 @@ class BNReasoner:
             for i in self.get_path(variable, j):
                 if i not in query_variables and i != variable and i not in eliminate_vars:
                     eliminate_vars.append(i)
-
-        new_network = self.network_pruning(variable, evidence)
-        new_table = new_network.variable_elimination(eliminate_vars)
+        if variable:
+            new_network = self.network_pruning(variable, evidence)
+            new_table = new_network.variable_elimination(eliminate_vars)
+        else:
+            new_table = self.variable_elimination(eliminate_vars)
         return new_table
 
 
@@ -409,34 +411,11 @@ if __name__ == "__main__":
     # BN1 = BNReasoner('testing/test.BIFXML')
     # BN2 = BNReasoner('testing/lecture_example.BIFXML')
     # BN3 = BNReasoner('testing/lecture_example2.BIFXML')
-    BN4 = BNReasoner('testing/dog_problem.BIFXML')
-
-
-    # var_elim = BN4.variable_elimination(["bowel-problem", "family-out"])
-    # print(var_elim)
-
-    max_b = BN4.maximum_a_posteriori(["bowel-problem", "hear-bark"])
-    print(max_b)
-    max_a = BN4.maximum_a_posteriori_marginalize(["bowel-problem", "hear-bark"])
-    print(max_a)
-
-    # BN4.bn.draw_structure()
-    # print(BN2.d_separation(["Rain?"], ["Sprinkler?"], ["Winter?", "Wet Grass?"]))
-
-    # check = BN.independence(["Slippery Road?"], ["Sprinkler?"], ["Winter?", "Rain?"])
-    # for variable in BN2.bn.get_all_variables():
-    #     print(BN2.bn.get_cpt(variable))
-    # print('\n')
-
-    # print('1.5=',BN2.most_probable_explanation({'Rain?':True, 'Winter?':False}))
-
-    # for variable in BN2.bn.get_all_variables():
-    #     print(BN2.bn.get_cpt(variable))
-    # print('\n')
-    # print('\n\n')
-    # BN.network_pruning('Rain?', False)
-    # BN.bn.draw_structure()
-    # for variable in BN3.bn.get_all_variables():
-    #     print(BN3.bn.get_cpt(variable))
-    # BN2.bn.draw_structure()
-
+    # BN4 = BNReasoner('testing/dog_problem.BIFXML')
+    EigenBN = BNReasoner('climate_change.BIFXML')
+    # EigenBN.bn.draw_structure()
+    print('MPE=', EigenBN.most_probable_explanation({'Rainfall':False, 'Deforestation':True, 'Heatwaves':True}))
+    print('MAP_variable_elim=', EigenBN.maximum_a_posteriori(["Rainfall", "Deforestation", "Heatwaves"]))
+    print('MAP_marginalization=', EigenBN.maximum_a_posteriori_marginalize(["Rainfall", "Deforestation", "Heatwaves"]))
+    print('Prior marginal query=', EigenBN.marginal_distribution(["Rainfall", "Deforestation", "Heatwaves","Permafrost Melting", "Ice Melting"],False,False))
+    print('Posterior marginal query=',EigenBN.marginal_distribution(["Rainfall", "Deforestation", "Heatwaves","Permafrost Melting", "Ice Melting"]),"Rainfall",True)
