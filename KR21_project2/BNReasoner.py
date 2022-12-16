@@ -10,6 +10,7 @@ import networkx as nx
 from functools import reduce
 import itertools
 import copy
+from collections import deque
 
 
 class BNReasoner:
@@ -105,7 +106,7 @@ class BNReasoner:
         visit_nodes = copy.copy(evidence)
         obs = set()
 
-        while len(visit_nodes) > 0:
+        for node in visit_nodes:
             for parent in self.bn.structure.predecessors(visit_nodes.pop()):
                 obs.add(parent)
 
@@ -138,15 +139,28 @@ class BNReasoner:
         return True
 
 
-    def d_separation_pruning(self, start, end, evidence):
-        combined = start + end + evidence
+    # def d_separation_pruning(self, start, end, evidence):
+    #     combined = start + end + evidence
+    #     reasoner_copy = BNReasoner(self.bn)
+    #     G = reasoner_copy.bn.structure
 
-        # Remove leaf nodes
+    #     # Remove leaf nodes
+    #     leaf_nodes = deque([n for n in G.nodes if G.out_degree[n] == 0])
+    #     while leaf_nodes:
+    #         leaf = leaf_nodes.popleft()
+    #         if leaf not in combined:
+    #             for pred in G.predecessors(leaf):
+    #                 if G.out_degree[pred] == 1:
+    #                     leaf_nodes.append(pred)
+    #             G.remove_node(leaf)
 
-        # Remove outgoing edges
-        reasoner_copy = BNReasoner(self.bn)
-        for e in evidence:
-            reasoner_copy.network_pruning(e, True)
+    #     # Remove outgoing evidence edges
+    #     for e in evidence:
+    #         reasoner_copy.network_pruning(e, True)
+
+
+
+    #     reasoner_copy.bn.draw_structure()
 
     def independence(self, X, Y, Z):
         """
@@ -220,8 +234,8 @@ class BNReasoner:
         for i, column in enumerate(list(f.columns[:-1]) + list(g.columns[:-1])):
             new_df[column] = transposed_worlds[i]
         new_df["p"] = new_ps
-        return pd.DataFrame(new_df)
-
+        res = pd.DataFrame(new_df)
+        return res
 
     def variable_elimination(self, variables: list) -> pd.DataFrame:
         """
@@ -236,6 +250,38 @@ class BNReasoner:
             cpts = []
             if partial_factors is not None:
                 # print(partial_factors)
+                cpts.append(partial_factors)
+            partial_factors = None
+
+            # Check if variable is in the cpt
+            new_dict = {}
+            for cpt in cpt_dict:
+                if variable in cpt_dict[cpt].columns:
+                    cpts.append(cpt_dict[cpt])
+                else:
+                    # Rest of the cpts
+                    new_dict[cpt] = cpt_dict[cpt]
+            cpt_dict = new_dict
+
+            joined_factors = reduce(lambda x, y: self.multiply_factors(x, y), cpts)
+
+            # Step 2. Sum out the influence of the variable on new factor
+            partial_factors = self.marginalization(joined_factors, variable)
+
+        return partial_factors
+
+    def variable_elimination2(self, factor, variables: list) -> pd.DataFrame:
+        """
+        Sum out a set of variables by using variable elimination.
+        """
+        # Get all cpts
+        cpt_dict = factor
+        partial_factors = None
+
+        for variable in variables:
+            # Step 1. Join all factors containing that variable
+            cpts = []
+            if partial_factors is not None:
                 cpts.append(partial_factors)
             partial_factors = None
 
@@ -284,7 +330,7 @@ class BNReasoner:
         all_cpts = self.bn.get_all_cpts().items()
         res = list(filter(lambda x: any(q in x[1].columns for q in q_not_e), all_cpts))
         res = [a for _, a in res]
-        marginal_distribution = reduce(lambda x, y: self.factor_multiplication(x, y), res)
+        marginal_distribution = reduce(lambda x, y: self.multiply_factors(x, y), res)
 
         # Then sum out q_not_e
         for e in q_not_e:
@@ -434,29 +480,32 @@ class BNReasoner:
             to_remove = [var for var in self.bn.get_all_variables() if var not in query_variables]
             return self.variable_elimination(to_remove)
 
-        # Reduce all factors wrt e and Compute joint marginal Pr(Q^e)
+        # Reduce all factors wrt e
         res = reduce(lambda x, y: self.multiply_factors(x, y), list(self.bn.get_all_cpts().values()))
-        res = res[res[variable] == evidence]
-        print(res)
+        res = res[res[variable] == evidence] # all factors wrt e
 
-        # Sum out Q to obtain Pr(e)
-        new_res = res
-        for q in query_variables:
-            new_res = self.marginalization(new_res, q)
+        # This is Pr(Q^e)
+        not_Q_e = [v for v in self.bn.get_all_variables() if v != variable and v not in query_variables]
+        pr_Q_e = self.variable_elimination(not_Q_e) # all columns not e or Q
+        pr_Q_e = pr_Q_e[pr_Q_e[variable] == evidence]
 
         # Compute Pr(Q|e) = Pr(Q^e)/Pr(e)
+        not_e = [v for v in self.bn.get_all_variables() if v != variable]
+        pr_e = self.variable_elimination(not_e) # all columns not e
+        pr_e_p = pr_e[pr_e[variable] == evidence]['p']
 
+        res_dict = {}
+        for item in query_variables:
+            for i, row in pr_Q_e.iterrows():
+                res_dict[str(item)+" "+str(row[item])] = float(row['p'])/float(pr_e_p)
 
+        print(res_dict)
 
 
 if __name__ == "__main__":
     # Hardcoded voorbeeld om stuk te testen
     EigenBN = BNReasoner('climate_change.BIFXML')
-
-    # print(EigenBN.multiply_factors(EigenBN.bn.get_cpt("Increase Greenhouse Gasses"), EigenBN.bn.get_cpt("Positive Radiative Forcing")))
     # print('MPE=', EigenBN.mpe(["Rainfall", "Deforestation", "Heatwaves"]))
     # print('MAP_variable_elim=', EigenBN.maximum_a_posteriori(["Rainfall", "Deforestation", "Heatwaves"]))
-    # a = EigenBN.marginal_distribution(["Rainfall", "Deforestation", "Heatwaves","Permafrost Melting", "Ice Melting"],False,False)
-    # print('Prior marginal query=', a)
-
-    print('Posterior marginal query=',EigenBN.marginal_distribution(["Rainfall", "Deforestation", "Heatwaves","Permafrost Melting", "Ice Melting"],"Rainfall",True))
+    # print('Prior marginal query=', EigenBN.marginal_distribution(["Rainfall", "Deforestation", "Heatwaves","Permafrost Melting", "Ice Melting"],False,False))
+    print('Posterior marginal query=',EigenBN.marginal_distribution(["Rainfall"], "Heatwaves", True))
