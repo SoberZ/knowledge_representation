@@ -76,7 +76,7 @@ class MyTestCase(unittest.TestCase):
         outcome = BN.variable_elimination(["family-out", "dog-out", "light-on"])
         # setup correct answer in dataframe
         answer_Data = {'bowel-problem': [False, False, True, True],'hear-bark':
-            [False, True, False, True], 'p': [0.640315, 0.359685, 0.286345, 0.713655]}
+            [False, True, False, True], 'p': [1.42, 2.58, 1.42, 2.58]}
         expected = pd.DataFrame(data=answer_Data)
         # check for each row if the outcome equals the expected outcome
         for i, j in zip(expected.iterrows(), outcome.iterrows()):
@@ -111,26 +111,26 @@ class MyTestCase(unittest.TestCase):
     def test_marginal_distributions(self):
         BN1 = BNR.BNReasoner('testing/test.BIFXML')
         outcome = BN1.marginal_distribution(['C'], 'A', True)
-        # setup correct answer in dataframe
-        answer_Data = {'A': [True, True], 'C':
-            [False, True], 'p': [0.68, 0.32]}
-        expected = pd.DataFrame(data=answer_Data)
+        # setup correct answer in dictionary
+        expected = {'C False': 0.6, 'C True': 0.4}
         # check for each row if the outcome equals the expected outcome
-        for i, j in zip(expected.iterrows(), outcome.iterrows()):
-            self.assertEqual(str(i[1].to_string()), str(j[1].to_string()))
+        self.assertEqual(outcome, expected)
 
     def test_MAP(self):
         BN4 = BNR.BNReasoner('testing/dog_problem.BIFXML')
-        max_b = BN4.maximum_a_posteriori(["bowel-problem", "hear-bark"])
-        max_a = BN4.maximum_a_posteriori_marginalize(["bowel-problem", "hear-bark"])
-        # setup correct answer in dataframe
-        answer_Data = {'p': [0.640315, 0.713655], 'extended_factors':
-            ['bowel-problem= False,hear-bark= False', 'bowel-problem= True,hear-bark= True']}
-        expected = pd.DataFrame(data=answer_Data)
+        outcome_b = BN4.maximum_a_posteriori(["bowel-problem", "hear-bark"])
+        outcome_a = BN4.maximum_a_posteriori_marginalize(["bowel-problem", "hear-bark"])
+        answer_Data_a = {'p': [2.4381], 'extended_factors':
+            ['bowel-problem= False,hear-bark= True']}
+        answer_Data_b = {'p': [2.58], 'extended_factors':
+            ['bowel-problem= False,hear-bark= True']}
+        expected_a = pd.DataFrame(data=answer_Data_a)
+        expected_b = pd.DataFrame(data=answer_Data_b)
         # check for each row if the outcome equals the expected outcome
-        for outcome in (max_b, max_a):
-            for i, j in zip(expected.iterrows(), outcome.iterrows()):
-                self.assertEqual(str(i[1].to_string()), str(j[1].to_string()))
+        for i, j in zip(expected_a.iterrows(), outcome_a.iterrows()):
+            self.assertEqual(str(i[1].to_string()), str(j[1].to_string()))
+        for i, j in zip(expected_b.iterrows(), outcome_b.iterrows()):
+            self.assertEqual(str(i[1].to_string()), str(j[1].to_string()))
 
 
 if __name__ == '__main__':

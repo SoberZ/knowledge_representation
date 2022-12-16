@@ -498,8 +498,8 @@ class BNReasoner:
         for item in query_variables:
             for i, row in pr_Q_e.iterrows():
                 res_dict[str(item)+" "+str(row[item])] = float(row['p'])/float(pr_e_p)
+        return res_dict
 
-        print(res_dict)
 
 
 if __name__ == "__main__":
@@ -507,5 +507,5 @@ if __name__ == "__main__":
     EigenBN = BNReasoner('climate_change.BIFXML')
     # print('MPE=', EigenBN.mpe(["Rainfall", "Deforestation", "Heatwaves"]))
     # print('MAP_variable_elim=', EigenBN.maximum_a_posteriori(["Rainfall", "Deforestation", "Heatwaves"]))
-    # print('Prior marginal query=', EigenBN.marginal_distribution(["Rainfall", "Deforestation", "Heatwaves","Permafrost Melting", "Ice Melting"],False,False))
-    print('Posterior marginal query=',EigenBN.marginal_distribution(["Rainfall"], "Heatwaves", True))
+    # print('Prior marginal query=', EigenBN.marginal_distribution(["Rainfall", "Deforestation", "Heatwaves"],False,False))
+    print('Posterior marginal query=',EigenBN.marginal_distribution(["Increase Greenhouse Gasses"], "Rising Global Temperature", True))
