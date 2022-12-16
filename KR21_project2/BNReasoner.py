@@ -5,6 +5,7 @@ os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 from typing import Union
 from BayesNet import BayesNet
 import pandas as pd
+pd.set_option('display.max_colwidth', None)
 import networkx as nx
 from functools import reduce
 import itertools
@@ -57,7 +58,7 @@ class BNReasoner:
             group_cols.remove('p')
             df2 = factor.groupby(group_cols, as_index=False)['p'].sum()
             return df2
-        return False
+        return factor
 
     def maxing_out(self, factor: pd.DataFrame, variable: str):
         """
@@ -72,7 +73,7 @@ class BNReasoner:
 
         # There is only one column to maximize over.
         if len(factor.columns) == 2 and factor.columns[0] == variable:
-            return factor
+            return factor.loc[factor['p'] == factor['p'].max()]
 
         new_list = []
         newer_list = []
@@ -80,15 +81,16 @@ class BNReasoner:
         df_new = df_new.drop_duplicates(
             subset=factor.columns.difference(
                 [variable, 'p'])).sort_index()
-        for item in df_new.loc[:, variable].tolist():
-            new_list.append(variable + '= ' + str(item))
-        if 'extended_factors' in df_new.columns:
-            for i, item in enumerate(df_new['extended_factors']):
-                newer_list.append(item + ',' + new_list[i])
-            df_new['extended_factors'] = newer_list
-        else:
-            df_new['extended_factors'] = new_list
-        df_new = df_new.drop(labels=variable, axis='columns')
+        if variable in df_new.columns:
+            for item in df_new.loc[:, variable].tolist():
+                new_list.append(variable + '= ' + str(item))
+            if 'extended_factors' in df_new.columns:
+                for i, item in enumerate(df_new['extended_factors']):
+                    newer_list.append(item + ',' + new_list[i])
+                df_new['extended_factors'] = newer_list
+            else:
+                df_new['extended_factors'] = new_list
+            df_new = df_new.drop(labels=variable, axis='columns')
         return df_new
 
 
@@ -198,6 +200,27 @@ class BNReasoner:
 
         return merged
 
+    def multiply_factors(self, f: pd.DataFrame, g: pd.DataFrame) -> pd.DataFrame:
+        f_len, g_len = len(f.columns) - 1, len(g.columns) - 1
+        n_vars = f_len + g_len
+        worlds = [list(i) for i in itertools.product([False, True], repeat=n_vars)]
+        new_ps = []
+
+        for world in worlds:
+            part1, part2 = world[0:f_len], world[f_len:]
+            p1_series = pd.Series(dict(zip(f.columns, part1)))
+            p2_series = pd.Series(dict(zip(g.columns, part2)))
+            cit1 = self.bn.get_compatible_instantiations_table(p1_series, f)
+            cit2 = self.bn.get_compatible_instantiations_table(p2_series, g)
+            new_ps.append(list(cit1.p)[0] * list(cit2.p)[0])
+
+        # Create new table
+        transposed_worlds = [*zip(*worlds)]
+        new_df = {}
+        for i, column in enumerate(list(f.columns[:-1]) + list(g.columns[:-1])):
+            new_df[column] = transposed_worlds[i]
+        new_df["p"] = new_ps
+        return pd.DataFrame(new_df)
 
 
     def variable_elimination(self, variables: list) -> pd.DataFrame:
@@ -226,7 +249,7 @@ class BNReasoner:
                     new_dict[cpt] = cpt_dict[cpt]
             cpt_dict = new_dict
 
-            joined_factors = reduce(lambda x, y: self.factor_multiplication(x, y), cpts)
+            joined_factors = reduce(lambda x, y: self.multiply_factors(x, y), cpts)
 
             # Step 2. Sum out the influence of the variable on new factor
             partial_factors = self.marginalization(joined_factors, variable)
@@ -246,7 +269,7 @@ class BNReasoner:
         for e in evidence:
             marginal_distribution = self.maxing_out(marginal_distribution, e)
 
-        return marginal_distribution
+        return self.maxing_out(marginal_distribution, 'p')
 
 
     def maximum_a_posteriori_marginalize(self, evidence: list):
@@ -271,7 +294,7 @@ class BNReasoner:
         for e in evidence:
             marginal_distribution = self.maxing_out(marginal_distribution, e)
 
-        return marginal_distribution
+        return self.maxing_out(marginal_distribution, 'p')
 
 
     def most_probable_explanation(self, evidence_dict):
@@ -299,6 +322,20 @@ class BNReasoner:
                             highest = item
                             highest_cpt = cpt
         return self.cpt_to_dict(highest_cpt, evidence_dict, highest), 'p='+str(highest)
+
+    def mpe(self, evidence: list):
+        """
+        Most probable explanation
+        """
+        # Remove all evidence from the joint distribution
+        q_not_e = [i for i in self.bn.get_all_variables() if i not in evidence]
+        marginal_distribution = self.variable_elimination(evidence)
+
+        for e in q_not_e:
+            marginal_distribution = self.maxing_out(marginal_distribution, e)
+
+        return self.maxing_out(marginal_distribution, 'p')
+
 
     @staticmethod
     def cpt_to_dict(cpt, evidence_dict, highest):
@@ -393,29 +430,33 @@ class BNReasoner:
         :param variable: The variable for which you have evidence
         :param evidence: Assignment of the variable: True/False
         """
-        eliminate_vars = []
-        for j in query_variables:
-            for i in self.get_path(variable, j):
-                if i not in query_variables and i != variable and i not in eliminate_vars:
-                    eliminate_vars.append(i)
-        if variable:
-            new_network = self.network_pruning(variable, evidence)
-            new_table = new_network.variable_elimination(eliminate_vars)
-        else:
-            new_table = self.variable_elimination(eliminate_vars)
-        return new_table
+        if not variable:
+            to_remove = [var for var in self.bn.get_all_variables() if var not in query_variables]
+            return self.variable_elimination(to_remove)
+
+        # Reduce all factors wrt e and Compute joint marginal Pr(Q^e)
+        res = reduce(lambda x, y: self.multiply_factors(x, y), list(self.bn.get_all_cpts().values()))
+        res = res[res[variable] == evidence]
+        print(res)
+
+        # Sum out Q to obtain Pr(e)
+        new_res = res
+        for q in query_variables:
+            new_res = self.marginalization(new_res, q)
+
+        # Compute Pr(Q|e) = Pr(Q^e)/Pr(e)
+
+
 
 
 if __name__ == "__main__":
     # Hardcoded voorbeeld om stuk te testen
-    # BN1 = BNReasoner('testing/test.BIFXML')
-    # BN2 = BNReasoner('testing/lecture_example.BIFXML')
-    # BN3 = BNReasoner('testing/lecture_example2.BIFXML')
-    # BN4 = BNReasoner('testing/dog_problem.BIFXML')
     EigenBN = BNReasoner('climate_change.BIFXML')
-    # EigenBN.bn.draw_structure()
-    print('MPE=', EigenBN.most_probable_explanation({'Rainfall':False, 'Deforestation':True, 'Heatwaves':True}))
-    print('MAP_variable_elim=', EigenBN.maximum_a_posteriori(["Rainfall", "Deforestation", "Heatwaves"]))
-    print('MAP_marginalization=', EigenBN.maximum_a_posteriori_marginalize(["Rainfall", "Deforestation", "Heatwaves"]))
-    print('Prior marginal query=', EigenBN.marginal_distribution(["Rainfall", "Deforestation", "Heatwaves","Permafrost Melting", "Ice Melting"],False,False))
-    print('Posterior marginal query=',EigenBN.marginal_distribution(["Rainfall", "Deforestation", "Heatwaves","Permafrost Melting", "Ice Melting"]),"Rainfall",True)
+
+    # print(EigenBN.multiply_factors(EigenBN.bn.get_cpt("Increase Greenhouse Gasses"), EigenBN.bn.get_cpt("Positive Radiative Forcing")))
+    # print('MPE=', EigenBN.mpe(["Rainfall", "Deforestation", "Heatwaves"]))
+    # print('MAP_variable_elim=', EigenBN.maximum_a_posteriori(["Rainfall", "Deforestation", "Heatwaves"]))
+    # a = EigenBN.marginal_distribution(["Rainfall", "Deforestation", "Heatwaves","Permafrost Melting", "Ice Melting"],False,False)
+    # print('Prior marginal query=', a)
+
+    print('Posterior marginal query=',EigenBN.marginal_distribution(["Rainfall", "Deforestation", "Heatwaves","Permafrost Melting", "Ice Melting"],"Rainfall",True))
